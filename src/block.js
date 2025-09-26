@@ -5,246 +5,396 @@ import {
   touchEventHandler,
   addSuccessCount,
   addFailedCount,
-  addScore
-} from './utils'
-import * as constant from './constant'
+  addScore,
+} from "./utils";
+import * as constant from "./constant";
 
 const checkCollision = (block, line) => {
   // 0 goon 1 drop 2 rotate left 3 rotate right 4 ok 5 perfect
   if (block.y + block.height >= line.y) {
-    if (block.x < line.x - block.calWidth || block.x > line.collisionX + block.calWidth) {
-      return 1
+    if (
+      block.x < line.x - block.calWidth ||
+      block.x > line.collisionX + block.calWidth
+    ) {
+      return 1;
     }
     if (block.x < line.x) {
-      return 2
+      return 2;
     }
     if (block.x > line.collisionX) {
-      return 3
+      return 3;
     }
-    if (block.x > line.x + (block.calWidth * 0.8) && block.x < line.x + (block.calWidth * 1.2)) {
+    if (
+      block.x > line.x + block.calWidth * 0.8 &&
+      block.x < line.x + block.calWidth * 1.2
+    ) {
       // -10% +10%
-      return 5
+      return 5;
     }
-    return 4
+    return 4;
   }
-  return 0
-}
+  return 0;
+};
 const swing = (instance, engine, time) => {
-  const ropeHeight = engine.getVariable(constant.ropeHeight)
-  if (instance.status !== constant.swing) return
-  const i = instance
-  const initialAngle = engine.getVariable(constant.initialAngle)
-  i.angle = initialAngle *
-    getSwingBlockVelocity(engine, time)
-  i.weightX = i.x +
-    (Math.sin(i.angle) * ropeHeight)
-  i.weightY = i.y +
-    (Math.cos(i.angle) * ropeHeight)
-}
+  const ropeHeight = engine.getVariable(constant.ropeHeight);
+  if (instance.status !== constant.swing) return;
+  const i = instance;
+  const initialAngle = engine.getVariable(constant.initialAngle);
+  i.angle = initialAngle * getSwingBlockVelocity(engine, time);
+  i.weightX = i.x + Math.sin(i.angle) * ropeHeight;
+  i.weightY = i.y + Math.cos(i.angle) * ropeHeight;
+};
 
 const checkBlockOut = (instance, engine) => {
   if (instance.status === constant.rotateLeft) {
     // 左转 要等右上角消失才算消失
     if (instance.y - instance.width >= engine.height) {
-      instance.visible = false
-      instance.status = constant.out
-      addFailedCount(engine)
+      instance.visible = false;
+      instance.status = constant.out;
+      addFailedCount(engine);
     }
   } else if (instance.y >= engine.height) {
-    instance.visible = false
-    instance.status = constant.out
-    addFailedCount(engine)
+    instance.visible = false;
+    instance.status = constant.out;
+    addFailedCount(engine);
   }
-}
+};
 
 export const blockAction = (instance, engine, time) => {
-  const i = instance
-  const ropeHeight = engine.getVariable(constant.ropeHeight)
+  const i = instance;
+  const ropeHeight = engine.getVariable(constant.ropeHeight);
   if (!i.visible) {
-    return
+    return;
   }
   if (!i.ready) {
-    i.ready = true
-    i.status = constant.swing
-    instance.updateWidth(engine.getVariable(constant.blockWidth))
-    instance.updateHeight(engine.getVariable(constant.blockHeight))
-    instance.x = engine.width / 2
-    instance.y = ropeHeight * -1.5
+    i.ready = true;
+    i.status = constant.swing;
+    instance.updateWidth(engine.getVariable(constant.blockWidth));
+    instance.updateHeight(engine.getVariable(constant.blockHeight));
+    instance.x = engine.width / 2;
+    instance.y = ropeHeight * -1.5;
   }
-  const line = engine.getInstance('line')
+  const line = engine.getInstance("line");
   switch (i.status) {
     case constant.swing:
       engine.getTimeMovement(
         constant.hookDownMovement,
         [[instance.y, instance.y + ropeHeight]],
         (value) => {
-          instance.y = value
+          instance.y = value;
         },
         {
-          name: 'block'
+          name: "block",
         }
-      )
-      swing(instance, engine, time)
-      break
+      );
+      swing(instance, engine, time);
+      break;
     case constant.beforeDrop:
-      i.x = instance.weightX - instance.calWidth
-      i.y = instance.weightY + (0.3 * instance.height) // add rope height
-      i.rotate = 0
-      i.ay = engine.pixelsPerFrame(0.0003 * engine.height) // acceleration of gravity
-      i.startDropTime = time
-      i.status = constant.drop
-      break
+      i.x = instance.weightX - instance.calWidth;
+      i.y = instance.weightY + 0.3 * instance.height; // add rope height
+      i.rotate = 0;
+      i.ay = engine.pixelsPerFrame(0.0003 * engine.height); // acceleration of gravity
+      i.startDropTime = time;
+      i.status = constant.drop;
+      break;
     case constant.drop:
-      const deltaTime = time - i.startDropTime
-      i.startDropTime = time
-      i.vy += i.ay * deltaTime
-      i.y += (i.vy * deltaTime) + (0.5 * i.ay * (deltaTime ** 2))
-      const collision = checkCollision(instance, line)
-      const blockY = line.y - instance.height
+      const deltaTime = time - i.startDropTime;
+      i.startDropTime = time;
+      i.vy += i.ay * deltaTime;
+      i.y += i.vy * deltaTime + 0.5 * i.ay * deltaTime ** 2;
+      const collision = checkCollision(instance, line);
+      const blockY = line.y - instance.height;
       const calRotate = (ins) => {
-        ins.originOutwardAngle = Math.atan(ins.height / ins.outwardOffset)
-        ins.originHypotenuse = Math.sqrt((ins.height ** 2)
-          + (ins.outwardOffset ** 2))
-        engine.playAudio('rotate')
-      }
+        ins.originOutwardAngle = Math.atan(ins.height / ins.outwardOffset);
+        ins.originHypotenuse = Math.sqrt(
+          ins.height ** 2 + ins.outwardOffset ** 2
+        );
+        engine.playAudio("rotate");
+      };
       switch (collision) {
         case 1:
-          checkBlockOut(instance, engine)
-          break
+          checkBlockOut(instance, engine);
+          break;
         case 2:
-          i.status = constant.rotateLeft
-          instance.y = blockY
-          instance.outwardOffset = (line.x + instance.calWidth) - instance.x
-          calRotate(instance)
-          break
+          i.status = constant.rotateLeft;
+          instance.y = blockY;
+          instance.outwardOffset = line.x + instance.calWidth - instance.x;
+          calRotate(instance);
+          break;
         case 3:
-          i.status = constant.rotateRight
-          instance.y = blockY
-          instance.outwardOffset = (line.collisionX + instance.calWidth) - instance.x
-          calRotate(instance)
-          break
+          i.status = constant.rotateRight;
+          instance.y = blockY;
+          instance.outwardOffset =
+            line.collisionX + instance.calWidth - instance.x;
+          calRotate(instance);
+          break;
         case 4:
         case 5:
-          i.status = constant.land
-          const lastSuccessCount = engine.getVariable(constant.successCount)
-          addSuccessCount(engine)
-          engine.setTimeMovement(constant.moveDownMovement, 500)
+          i.status = constant.land;
+          const lastSuccessCount = engine.getVariable(constant.successCount);
+          addSuccessCount(engine);
+          engine.setTimeMovement(constant.moveDownMovement, 500);
           if (lastSuccessCount === 10 || lastSuccessCount === 15) {
-            engine.setTimeMovement(constant.lightningMovement, 150)
+            engine.setTimeMovement(constant.lightningMovement, 150);
           }
-          instance.y = blockY
-          line.y = blockY
-          line.x = i.x - i.calWidth
-          line.collisionX = line.x + i.width
+          instance.y = blockY;
+          line.y = blockY;
+          line.x = i.x - i.calWidth;
+          line.collisionX = line.x + i.width;
           // 作弊检测 超出左边或右边1／3
-          const cheatWidth = i.width * 0.3
-          if (i.x > engine.width - (cheatWidth * 2)
-            || i.x < -cheatWidth) {
-            engine.setVariable(constant.hardMode, true)
+          const cheatWidth = i.width * 0.3;
+          if (i.x > engine.width - cheatWidth * 2 || i.x < -cheatWidth) {
+            engine.setVariable(constant.hardMode, true);
           }
           if (collision === 5) {
-            instance.perfect = true
-            addScore(engine, true)
-            engine.playAudio('drop-perfect')
+            instance.perfect = true;
+            addScore(engine, true);
+            engine.playAudio("drop-perfect");
           } else {
-            addScore(engine)
-            engine.playAudio('drop')
+            addScore(engine);
+            engine.playAudio("drop");
           }
-          break
+          break;
         default:
-          break
+          break;
       }
-      break
+      break;
     case constant.land:
       engine.getTimeMovement(
         constant.moveDownMovement,
-        [[instance.y, instance.y + (getMoveDownValue(engine, { pixelsPerFrame: s => s / 2 }))]],
+        [
+          [
+            instance.y,
+            instance.y +
+              getMoveDownValue(engine, { pixelsPerFrame: (s) => s / 2 }),
+          ],
+        ],
         (value) => {
-          if (!instance.visible) return
-          instance.y = value
+          if (!instance.visible) return;
+          instance.y = value;
           if (instance.y > engine.height) {
-            instance.visible = false
+            instance.visible = false;
           }
         },
         {
-          name: instance.name
+          name: instance.name,
         }
-      )
-      instance.x += getLandBlockVelocity(engine, time)
-      break
+      );
+      instance.x += getLandBlockVelocity(engine, time);
+      break;
     case constant.rotateLeft:
     case constant.rotateRight:
-      const isRight = i.status === constant.rotateRight
-      const rotateSpeed = engine.pixelsPerFrame(Math.PI * 4)
-      const isShouldFall = isRight ? instance.rotate > 1.3 : instance.rotate < -1.3// 75度
-      const leftFix = isRight ? 1 : -1
+      const isRight = i.status === constant.rotateRight;
+      const rotateSpeed = engine.pixelsPerFrame(Math.PI * 4);
+      const isShouldFall = isRight
+        ? instance.rotate > 1.3
+        : instance.rotate < -1.3; // 75度
+      const leftFix = isRight ? 1 : -1;
       if (isShouldFall) {
-        instance.rotate += (rotateSpeed / 8) * leftFix
-        instance.y += engine.pixelsPerFrame(engine.height * 0.7)
-        instance.x += engine.pixelsPerFrame(engine.width * 0.3) * leftFix
+        instance.rotate += (rotateSpeed / 8) * leftFix;
+        instance.y += engine.pixelsPerFrame(engine.height * 0.7);
+        instance.x += engine.pixelsPerFrame(engine.width * 0.3) * leftFix;
       } else {
-        let rotateRatio = (instance.calWidth - instance.outwardOffset)
-          / instance.calWidth
-        rotateRatio = rotateRatio > 0.5 ? rotateRatio : 0.5
-        instance.rotate += rotateSpeed * rotateRatio * leftFix
-        const angle = instance.originOutwardAngle + instance.rotate
-        const rotateAxisX = isRight ? line.collisionX + instance.calWidth
-          : line.x + instance.calWidth
-        const rotateAxisY = line.y
-        instance.x = rotateAxisX -
-          (Math.cos(angle) * instance.originHypotenuse)
-        instance.y = rotateAxisY -
-          (Math.sin(angle) * instance.originHypotenuse)
+        let rotateRatio =
+          (instance.calWidth - instance.outwardOffset) / instance.calWidth;
+        rotateRatio = rotateRatio > 0.5 ? rotateRatio : 0.5;
+        instance.rotate += rotateSpeed * rotateRatio * leftFix;
+        const angle = instance.originOutwardAngle + instance.rotate;
+        const rotateAxisX = isRight
+          ? line.collisionX + instance.calWidth
+          : line.x + instance.calWidth;
+        const rotateAxisY = line.y;
+        instance.x = rotateAxisX - Math.cos(angle) * instance.originHypotenuse;
+        instance.y = rotateAxisY - Math.sin(angle) * instance.originHypotenuse;
       }
-      checkBlockOut(instance, engine)
-      break
+      checkBlockOut(instance, engine);
+      break;
     default:
-      break
+      break;
   }
-}
+};
 
 const drawSwingBlock = (instance, engine) => {
-  const bl = engine.getImg('blockRope')
+  const bl = engine.getImg("blockRope");
   engine.ctx.drawImage(
-    bl, instance.weightX - instance.calWidth
-    , instance.weightY
-    , instance.width, instance.height * 1.3
-  )
-  const leftX = instance.weightX - instance.calWidth
-  engine.debugLineY(leftX)
-}
+    bl,
+    instance.weightX - instance.calWidth,
+    instance.weightY,
+    instance.width,
+    instance.height * 1.3
+  );
+  const leftX = instance.weightX - instance.calWidth;
+  engine.debugLineY(leftX);
+};
+
+// 성경책 정보 가져오기
+const getBibleBookInfo = (gameMode, bookIndex) => {
+  const oldTestament = [
+    "창세기",
+    "출애굽기",
+    "레위기",
+    "민수기",
+    "신명기",
+    "여호수아",
+    "사사기",
+    "룻기",
+    "사무엘상",
+    "사무엘하",
+    "열왕기상",
+    "열왕기하",
+    "역대상",
+    "역대하",
+    "에스라",
+    "느헤미야",
+    "에스더",
+    "욥기",
+    "시편",
+    "잠언",
+    "전도서",
+    "아가",
+    "이사야",
+    "예레미야",
+    "예레미야애가",
+    "에스겔",
+    "다니엘",
+    "호세아",
+    "요엘",
+    "아모스",
+    "오바댜",
+    "요나",
+    "미가",
+    "나훔",
+    "하박국",
+    "스바냐",
+    "학개",
+    "스가랴",
+    "말라기",
+  ];
+
+  const newTestament = [
+    "마태복음",
+    "마가복음",
+    "누가복음",
+    "요한복음",
+    "사도행전",
+    "로마서",
+    "고린도전서",
+    "고린도후서",
+    "갈라디아서",
+    "에베소서",
+    "빌립보서",
+    "골로새서",
+    "데살로니가전서",
+    "데살로니가후서",
+    "디모데전서",
+    "디모데후서",
+    "디도서",
+    "빌레몬서",
+    "히브리서",
+    "야고보서",
+    "베드로전서",
+    "베드로후서",
+    "요한일서",
+    "요한이서",
+    "요한삼서",
+    "유다서",
+    "요한계시록",
+  ];
+
+  const books = gameMode === "old" ? oldTestament : newTestament;
+  return (
+    books[bookIndex - 1] ||
+    `${gameMode === "old" ? "구약" : "신약"} ${bookIndex}`
+  );
+};
 
 const drawBlock = (instance, engine) => {
-  const { perfect } = instance
-  const bl = engine.getImg(perfect ? 'block-perfect' : 'block')
-  engine.ctx.drawImage(bl, instance.x, instance.y, instance.width, instance.height)
-}
+  const { perfect } = instance;
+  const blockCount = engine.getVariable(constant.blockCount);
+  const gameMode = engine.getVariable(constant.gameMode);
+  const maxBooks = engine.getVariable(constant.maxBooks);
+
+  // 성경책 이미지 사용 (순환)
+  const bookIndex = ((blockCount - 1) % maxBooks) + 1;
+  const bibleImg = engine.getImg(`bible-${bookIndex}`);
+  const bookName = getBibleBookInfo(gameMode, bookIndex);
+
+  if (bibleImg) {
+    // 성경책 이미지가 있으면 사용
+    engine.ctx.drawImage(
+      bibleImg,
+      instance.x,
+      instance.y,
+      instance.width,
+      instance.height
+    );
+
+    // 완벽한 착지 시 효과 추가
+    if (perfect) {
+      const { ctx } = engine;
+      ctx.save();
+      ctx.globalAlpha = 0.7;
+      ctx.fillStyle = "#FFD700"; // 금색 효과
+      ctx.fillRect(instance.x, instance.y, instance.width, instance.height);
+      ctx.restore();
+    }
+
+    // 성경책 이름 표시
+    const { ctx } = engine;
+    ctx.save();
+    ctx.fillStyle = "#FFFFFF";
+    ctx.strokeStyle = "#000000";
+    ctx.lineWidth = 2;
+    ctx.font = `${Math.max(12, instance.width * 0.12)}px Arial`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    const textX = instance.x + instance.width / 2;
+    const textY = instance.y + instance.height / 2;
+
+    // 텍스트 외곽선
+    ctx.strokeText(bookName, textX, textY);
+    // 텍스트 채우기
+    ctx.fillText(bookName, textX, textY);
+    ctx.restore();
+  } else {
+    // 기본 블록 이미지 사용 (fallback)
+    const bl = engine.getImg(perfect ? "block-perfect" : "block");
+    engine.ctx.drawImage(
+      bl,
+      instance.x,
+      instance.y,
+      instance.width,
+      instance.height
+    );
+  }
+};
 
 const drawRotatedBlock = (instance, engine) => {
-  const { ctx } = engine
-  ctx.save()
-  ctx.translate(instance.x, instance.y)
-  ctx.rotate(instance.rotate)
-  ctx.translate(-instance.x, -instance.y)
-  drawBlock(instance, engine)
-  ctx.restore()
-}
+  const { ctx } = engine;
+  ctx.save();
+  ctx.translate(instance.x, instance.y);
+  ctx.rotate(instance.rotate);
+  ctx.translate(-instance.x, -instance.y);
+  drawBlock(instance, engine);
+  ctx.restore();
+};
 
 export const blockPainter = (instance, engine) => {
-  const { status } = instance
+  const { status } = instance;
   switch (status) {
     case constant.swing:
-      drawSwingBlock(instance, engine)
-      break
+      drawSwingBlock(instance, engine);
+      break;
     case constant.drop:
     case constant.land:
-      drawBlock(instance, engine)
-      break
+      drawBlock(instance, engine);
+      break;
     case constant.rotateLeft:
     case constant.rotateRight:
-      drawRotatedBlock(instance, engine)
-      break
+      drawRotatedBlock(instance, engine);
+      break;
     default:
-      break
+      break;
   }
-}
+};
