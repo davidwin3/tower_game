@@ -8,6 +8,7 @@ import {
   addScore,
 } from "./utils";
 import * as constant from "./constant";
+import { getBibleBook } from "../bible-config.js";
 
 const checkCollision = (block, line) => {
   // 0 goon 1 drop 2 rotate left 3 rotate right 4 ok 5 perfect
@@ -73,6 +74,21 @@ export const blockAction = (instance, engine, time) => {
     instance.updateHeight(engine.getVariable(constant.blockHeight));
     instance.x = engine.width / 2;
     instance.y = ropeHeight * -1.5;
+
+    // 블럭 생성 시 성경 정보 저장 (이 블럭이 성공하면 몇 번째 성경책이 될지)
+    const currentSuccessCount = engine.getVariable(constant.successCount);
+    const gameMode = engine.getVariable(constant.gameMode);
+    const maxBooks = engine.getVariable(constant.maxBooks);
+    // 이 블럭이 성공하면 successCount가 1 증가하므로, 그 값을 기준으로 성경 순서 결정
+    const nextSuccessCount = currentSuccessCount + 1;
+    const bookIndex = ((nextSuccessCount - 1) % maxBooks) + 1;
+    instance.bibleBookIndex = bookIndex;
+    instance.bibleBookName = getBibleBookInfo(gameMode, bookIndex);
+
+    // 디버깅용 로그
+    console.log(
+      `블럭 생성: currentSuccessCount=${currentSuccessCount}, nextSuccessCount=${nextSuccessCount}, bookIndex=${bookIndex}, bookName=${instance.bibleBookName}`
+    );
   }
   const line = engine.getInstance("line");
   switch (i.status) {
@@ -133,6 +149,19 @@ export const blockAction = (instance, engine, time) => {
           i.status = constant.land;
           const lastSuccessCount = engine.getVariable(constant.successCount);
           addSuccessCount(engine);
+
+          // 성공적으로 착지했을 때 성경 정보 최종 확정
+          const currentSuccessCount = engine.getVariable(constant.successCount);
+          const gameMode = engine.getVariable(constant.gameMode);
+          const maxBooks = engine.getVariable(constant.maxBooks);
+          const finalBookIndex = ((currentSuccessCount - 1) % maxBooks) + 1;
+          instance.bibleBookIndex = finalBookIndex;
+          instance.bibleBookName = getBibleBookInfo(gameMode, finalBookIndex);
+
+          console.log(
+            `블럭 착지 성공: ${instance.name}, finalSuccessCount=${currentSuccessCount}, finalBookIndex=${finalBookIndex}, finalBookName=${instance.bibleBookName}`
+          );
+
           engine.setTimeMovement(constant.moveDownMovement, 500);
           if (lastSuccessCount === 10 || lastSuccessCount === 15) {
             engine.setTimeMovement(constant.lightningMovement, 150);
@@ -229,95 +258,24 @@ const drawSwingBlock = (instance, engine) => {
 
 // 성경책 정보 가져오기
 const getBibleBookInfo = (gameMode, bookIndex) => {
-  const oldTestament = [
-    "창세기",
-    "출애굽기",
-    "레위기",
-    "민수기",
-    "신명기",
-    "여호수아",
-    "사사기",
-    "룻기",
-    "사무엘상",
-    "사무엘하",
-    "열왕기상",
-    "열왕기하",
-    "역대상",
-    "역대하",
-    "에스라",
-    "느헤미야",
-    "에스더",
-    "욥기",
-    "시편",
-    "잠언",
-    "전도서",
-    "아가",
-    "이사야",
-    "예레미야",
-    "예레미야애가",
-    "에스겔",
-    "다니엘",
-    "호세아",
-    "요엘",
-    "아모스",
-    "오바댜",
-    "요나",
-    "미가",
-    "나훔",
-    "하박국",
-    "스바냐",
-    "학개",
-    "스가랴",
-    "말라기",
-  ];
-
-  const newTestament = [
-    "마태복음",
-    "마가복음",
-    "누가복음",
-    "요한복음",
-    "사도행전",
-    "로마서",
-    "고린도전서",
-    "고린도후서",
-    "갈라디아서",
-    "에베소서",
-    "빌립보서",
-    "골로새서",
-    "데살로니가전서",
-    "데살로니가후서",
-    "디모데전서",
-    "디모데후서",
-    "디도서",
-    "빌레몬서",
-    "히브리서",
-    "야고보서",
-    "베드로전서",
-    "베드로후서",
-    "요한일서",
-    "요한이서",
-    "요한삼서",
-    "유다서",
-    "요한계시록",
-  ];
-
-  const books = gameMode === "old" ? oldTestament : newTestament;
-  return (
-    books[bookIndex - 1] ||
-    `${gameMode === "old" ? "구약" : "신약"} ${bookIndex}`
-  );
+  const book = getBibleBook(gameMode, bookIndex - 1);
+  return book
+    ? book.name
+    : `${gameMode === "old" ? "구약" : "신약"} ${bookIndex}`;
 };
 
 const drawBlock = (instance, engine) => {
   const { perfect } = instance;
-  const blockCount = engine.getVariable(constant.blockCount);
-  const gameMode = engine.getVariable(constant.gameMode);
-  const maxBooks = engine.getVariable(constant.maxBooks);
 
-  // 성경책 이미지 사용 (순환)
-  const bookIndex = ((blockCount - 1) % maxBooks) + 1;
+  // 블럭 생성 시 저장된 성경 정보 사용
+  const bookIndex = instance.bibleBookIndex || 1;
+  const bookName = instance.bibleBookName || "창세기";
   const bibleImg = engine.getImg(`bible-${bookIndex}`);
-  const bookName = getBibleBookInfo(gameMode, bookIndex);
+
+  // 디버깅용 로그 - 블럭이 그려질 때마다 정보 출력
+  console.log(
+    `블럭 그리기: ${instance.name}, bookIndex=${bookIndex}, bookName=${bookName}`
+  );
 
   if (bibleImg) {
     // 성경책 이미지가 있으면 사용
@@ -344,8 +302,8 @@ const drawBlock = (instance, engine) => {
     ctx.save();
     ctx.fillStyle = "#FFFFFF";
     ctx.strokeStyle = "#000000";
-    ctx.lineWidth = 2;
-    ctx.font = `${Math.max(12, instance.width * 0.12)}px Arial`;
+    ctx.lineWidth = instance.width * 0.01;
+    ctx.font = `${Math.max(15, instance.width * 0.22)}px Arial`;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
 
