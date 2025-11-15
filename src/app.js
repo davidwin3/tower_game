@@ -49,10 +49,12 @@ window.TowerGame = (option = {}) => {
   }
 
   // 모드별 성경책 블록 이미지 로딩
-  const maxBooksToLoad = Math.min(maxBooks, 66); // 최대 66권
+  const maxBooksToLoad = Math.min(maxBooks, gameMode === "old" ? 39 : 27);
+  const imageStartIndex = gameMode === "old" ? 1 : 40; // 구약: 1-39, 신약: 40-66
   for (let i = 1; i <= maxBooksToLoad; i += 1) {
+    const imageNumber = imageStartIndex + i - 1;
     game.addImg(
-      `bible-${i}`,
+      `bible-${imageNumber}`,
       pathGenerator(`${backgroundPrefix}-book-${i}.png`)
     );
   }
@@ -166,12 +168,21 @@ $(".js-modal-content").css({ width: gameWidth + "px" });
 var selectedGameMode = null;
 
 function hideLoading() {
+  // 초기 로딩: DOM만 준비되면 모드 선택 화면 표시
+  if (domReady && !selectedGameMode) {
+    setTimeout(function () {
+      $(".loading").hide();
+      $(".mode-selection").show();
+    }, 1000);
+    return;
+  }
+  // 게임 로딩: DOM과 캔버스가 모두 준비되면 랜딩 화면 표시
   if (domReady && canvasReady) {
     $("#canvas").show();
     loadFinish = true;
     setTimeout(function () {
       $(".loading").hide();
-      $(".mode-selection").show();
+      $(".landing").show();
     }, 1000);
   }
 }
@@ -241,6 +252,10 @@ const option = {
 
 // game init with option
 function gameReady() {
+  // 모드가 선택되지 않았으면 게임 초기화를 하지 않음
+  if (!option.gameMode) {
+    return;
+  }
   game = TowerGame(option);
   game.load(function () {
     game.init();
@@ -250,19 +265,20 @@ function gameReady() {
   }, updateLoading);
 }
 
-var isWechat =
-  navigator.userAgent.toLowerCase().indexOf("micromessenger") !== -1;
-if (isWechat) {
-  document.addEventListener("WeixinJSBridgeReady", gameReady, false);
-} else {
-  gameReady();
-}
+// 게임 초기화는 모드 선택 후에 수행됨
+// var isWechat =
+//   navigator.userAgent.toLowerCase().indexOf("micromessenger") !== -1;
+// if (isWechat) {
+//   document.addEventListener("WeixinJSBridgeReady", gameReady, false);
+// } else {
+//   gameReady();
+// }
 
 function modeSelectionHide() {
   $(".mode-selection").addClass("slideTop");
   setTimeout(function () {
     $(".mode-selection").hide();
-    $(".landing").show();
+    // 랜딩 화면은 로딩 완료 후 hideLoading()에서 표시됨
   }, 950);
 }
 
@@ -286,6 +302,21 @@ $(".mode-button").on("click", function () {
   } else {
     option.gameMode = "new";
     option.maxBooks = 27;
+  }
+
+  // 모드 선택 후 게임 초기화
+  canvasReady = false;
+  loadError = false;
+  $(".loading").show();
+  $(".loading .title").text("0%");
+  $(".loading .percent").css({ width: "0%" });
+
+  var isWechat =
+    navigator.userAgent.toLowerCase().indexOf("micromessenger") !== -1;
+  if (isWechat) {
+    document.addEventListener("WeixinJSBridgeReady", gameReady, false);
+  } else {
+    gameReady();
   }
 
   modeSelectionHide();

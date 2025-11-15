@@ -81,7 +81,10 @@ export const blockAction = (instance, engine, time) => {
     const maxBooks = engine.getVariable(constant.maxBooks);
     // 이 블럭이 성공하면 successCount가 1 증가하므로, 그 값을 기준으로 성경 순서 결정
     const nextSuccessCount = currentSuccessCount + 1;
-    const bookIndex = ((nextSuccessCount - 1) % maxBooks) + 1;
+    const relativeIndex = ((nextSuccessCount - 1) % maxBooks) + 1;
+    // 모드에 따라 bookIndex 계산: 구약(1-39), 신약(40-66)
+    const bookIndex =
+      gameMode === "old" ? relativeIndex : 40 + (relativeIndex - 1);
     instance.bibleBookIndex = bookIndex;
     instance.bibleBookName = getBibleBookInfo(gameMode, bookIndex);
 
@@ -154,7 +157,10 @@ export const blockAction = (instance, engine, time) => {
           const currentSuccessCount = engine.getVariable(constant.successCount);
           const gameMode = engine.getVariable(constant.gameMode);
           const maxBooks = engine.getVariable(constant.maxBooks);
-          const finalBookIndex = ((currentSuccessCount - 1) % maxBooks) + 1;
+          const relativeIndex = ((currentSuccessCount - 1) % maxBooks) + 1;
+          // 모드에 따라 bookIndex 계산: 구약(1-39), 신약(40-66)
+          const finalBookIndex =
+            gameMode === "old" ? relativeIndex : 40 + (relativeIndex - 1);
           instance.bibleBookIndex = finalBookIndex;
           instance.bibleBookName = getBibleBookInfo(gameMode, finalBookIndex);
 
@@ -258,7 +264,9 @@ const drawSwingBlock = (instance, engine) => {
 
 // 성경책 정보 가져오기
 const getBibleBookInfo = (gameMode, bookIndex) => {
-  const book = getBibleBook(gameMode, bookIndex - 1);
+  // 모드에 따라 배열 인덱스 계산: 구약(1-39 → 0-38), 신약(40-66 → 0-26)
+  const arrayIndex = gameMode === "old" ? bookIndex - 1 : bookIndex - 40;
+  const book = getBibleBook(gameMode, arrayIndex);
   return book
     ? book.name
     : `${gameMode === "old" ? "구약" : "신약"} ${bookIndex}`;
