@@ -8,8 +8,7 @@ module.exports = (env, argv) => {
 
   return {
     entry: {
-      main: "./src/index.js",
-      app: "./src/app.js",
+      main: "./src/app.js",
     },
     output: {
       path: path.resolve(__dirname, "dist"),
@@ -54,7 +53,7 @@ module.exports = (env, argv) => {
       new HtmlWebpackPlugin({
         template: "./src/index.html",
         filename: "index.html",
-        chunks: ["main", "app"],
+        chunks: ["main"],
         chunksSortMode: "manual",
       }),
       ...(isProduction
