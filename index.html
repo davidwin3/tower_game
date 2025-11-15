@@ -336,6 +336,7 @@
 
       .mode-title {
         text-align: center;
+        margin-top: 0.6rem;
         margin-bottom: 0.3rem;
         color: #fff;
         flex-shrink: 0;
@@ -362,6 +363,7 @@
         max-width: 12rem;
         flex: 1;
         align-items: center;
+        margin-bottom: 0.2rem;
       }
 
       .mode-button {
@@ -443,13 +445,14 @@
       /* 반응형 디자인 */
       @media screen and (max-width: 768px) {
         .mode-buttons {
-          flex-direction: row;
+          flex-direction: column;
           gap: 0.15rem;
           max-width: 10rem;
+          justify-content: center;
         }
 
         .mode-button {
-          width: 48%;
+          width: 90%;
           padding: 0.18rem 0.12rem;
           max-height: 5rem;
         }
@@ -779,18 +782,6 @@
         },
         false
       );
-    </script>
-    <script
-      async
-      src="https://www.googletagmanager.com/gtag/js?id=G-YCWZ8ZDCH2"
-    ></script>
-    <script>
-      function gtag() {
-        dataLayer.push(arguments);
-      }
-      (window.dataLayer = window.dataLayer || []),
-        gtag("js", new Date()),
-        gtag("config", "G-YCWZ8ZDCH2");
     </script>
   </body>
 </html>

@@ -5,7 +5,7 @@
   "main": "index.js",
   "scripts": {
     "start": "npm run build && node index.js",
-    "build": "webpack --mode production --module-bind js=babel-loader"
+    "build": "NODE_OPTIONS=--openssl-legacy-provider webpack --mode production --module-bind js=babel-loader"
   },
   "repository": {
     "type": "git",
