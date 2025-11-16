@@ -250,15 +250,37 @@ export const blockAction = (instance, engine, time) => {
 };
 
 const drawSwingBlock = (instance, engine) => {
+  const blockX = instance.weightX - instance.calWidth;
+  const blockY = instance.weightY;
+
+  // blockRope 이미지 그리기
   const bl = engine.getImg("blockRope");
   engine.ctx.drawImage(
     bl,
-    instance.weightX - instance.calWidth,
-    instance.weightY,
+    blockX,
+    blockY,
     instance.width,
     instance.height * 1.3
   );
-  const leftX = instance.weightX - instance.calWidth;
+
+  // 성경책 이미지와 텍스트 표시
+  const bookIndex = instance.bibleBookIndex || 1;
+  const bookName = instance.bibleBookName || "창세기";
+  const bibleImg = engine.getImg(`bible-${bookIndex}`);
+
+  if (bibleImg) {
+    // 성경책 이름 텍스트 표시
+    drawBibleText(
+      engine.ctx,
+      blockX,
+      blockY,
+      instance.width,
+      instance.height * 1.6,
+      bookName
+    );
+  }
+
+  const leftX = blockX;
   engine.debugLineY(leftX);
 };
 
@@ -270,6 +292,41 @@ const getBibleBookInfo = (gameMode, bookIndex) => {
   return book
     ? book.name
     : `${gameMode === "old" ? "구약" : "신약"} ${bookIndex}`;
+};
+
+// 성경책 이름 텍스트 그리기 공통 함수
+const drawBibleText = (ctx, x, y, width, height, bookName) => {
+  ctx.save();
+  ctx.fillStyle = "#FFFFFF";
+  ctx.strokeStyle = "#000000";
+  ctx.lineWidth = width * 0.04;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+
+  // 텍스트가 블록 폭을 넘지 않도록 폰트 크기 자동 조정
+  const maxTextWidth = width * 0.9; // 블록 폭의 90%를 사용 가능한 텍스트 영역으로 설정
+  const minFontSize = 15;
+  let fontSize = Math.max(minFontSize, width * 0.22); // 초기 폰트 크기
+
+  // 텍스트 너비를 측정하고 폰트 크기 조정
+  ctx.font = `${fontSize}px Arial`;
+  let textWidth = ctx.measureText(bookName).width;
+
+  // 텍스트가 블록 폭을 넘으면 폰트 크기를 줄이며 반복
+  while (textWidth > maxTextWidth && fontSize > minFontSize) {
+    fontSize -= 1;
+    ctx.font = `${fontSize}px Arial`;
+    textWidth = ctx.measureText(bookName).width;
+  }
+
+  const textX = x + width / 2;
+  const textY = y + height / 2;
+
+  // 텍스트 외곽선
+  ctx.strokeText(bookName, textX, textY);
+  // 텍스트 채우기
+  ctx.fillText(bookName, textX, textY);
+  ctx.restore();
 };
 
 const drawBlock = (instance, engine) => {
@@ -306,38 +363,14 @@ const drawBlock = (instance, engine) => {
     }
 
     // 성경책 이름 표시
-    const { ctx } = engine;
-    ctx.save();
-    ctx.fillStyle = "#FFFFFF";
-    ctx.strokeStyle = "#000000";
-    ctx.lineWidth = instance.width * 0.04;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-
-    // 텍스트가 블록 폭을 넘지 않도록 폰트 크기 자동 조정
-    const maxTextWidth = instance.width * 0.9; // 블록 폭의 90%를 사용 가능한 텍스트 영역으로 설정
-    const minFontSize = 15;
-    let fontSize = Math.max(minFontSize, instance.width * 0.22); // 초기 폰트 크기
-
-    // 텍스트 너비를 측정하고 폰트 크기 조정
-    ctx.font = `${fontSize}px Arial`;
-    let textWidth = ctx.measureText(bookName).width;
-
-    // 텍스트가 블록 폭을 넘으면 폰트 크기를 줄이며 반복
-    while (textWidth > maxTextWidth && fontSize > minFontSize) {
-      fontSize -= 1;
-      ctx.font = `${fontSize}px Arial`;
-      textWidth = ctx.measureText(bookName).width;
-    }
-
-    const textX = instance.x + instance.width / 2;
-    const textY = instance.y + instance.height / 2;
-
-    // 텍스트 외곽선
-    ctx.strokeText(bookName, textX, textY);
-    // 텍스트 채우기
-    ctx.fillText(bookName, textX, textY);
-    ctx.restore();
+    drawBibleText(
+      engine.ctx,
+      instance.x,
+      instance.y,
+      instance.width,
+      instance.height,
+      bookName
+    );
   } else {
     // 기본 블록 이미지 사용 (fallback)
     const bl = engine.getImg(perfect ? "block-perfect" : "block");
