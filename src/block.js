@@ -310,10 +310,25 @@ const drawBlock = (instance, engine) => {
     ctx.save();
     ctx.fillStyle = "#FFFFFF";
     ctx.strokeStyle = "#000000";
-    ctx.lineWidth = instance.width * 0.01;
-    ctx.font = `${Math.max(15, instance.width * 0.22)}px Arial`;
+    ctx.lineWidth = instance.width * 0.04;
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
+
+    // 텍스트가 블록 폭을 넘지 않도록 폰트 크기 자동 조정
+    const maxTextWidth = instance.width * 0.9; // 블록 폭의 90%를 사용 가능한 텍스트 영역으로 설정
+    const minFontSize = 15;
+    let fontSize = Math.max(minFontSize, instance.width * 0.22); // 초기 폰트 크기
+
+    // 텍스트 너비를 측정하고 폰트 크기 조정
+    ctx.font = `${fontSize}px Arial`;
+    let textWidth = ctx.measureText(bookName).width;
+
+    // 텍스트가 블록 폭을 넘으면 폰트 크기를 줄이며 반복
+    while (textWidth > maxTextWidth && fontSize > minFontSize) {
+      fontSize -= 1;
+      ctx.font = `${fontSize}px Arial`;
+      textWidth = ctx.measureText(bookName).width;
+    }
 
     const textX = instance.x + instance.width / 2;
     const textY = instance.y + instance.height / 2;
