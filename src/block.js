@@ -263,22 +263,16 @@ const drawSwingBlock = (instance, engine) => {
     instance.height * 1.3
   );
 
-  // 성경책 이미지와 텍스트 표시
-  const bookIndex = instance.bibleBookIndex || 1;
+  // 성경책 이름 텍스트 표시
   const bookName = instance.bibleBookName || "창세기";
-  const bibleImg = engine.getImg(`bible-${bookIndex}`);
-
-  if (bibleImg) {
-    // 성경책 이름 텍스트 표시
-    drawBibleText(
-      engine.ctx,
-      blockX,
-      blockY,
-      instance.width,
-      instance.height * 1.6,
-      bookName
-    );
-  }
+  drawBibleText(
+    engine.ctx,
+    blockX,
+    blockY,
+    instance.width,
+    instance.height * 1.6,
+    bookName
+  );
 
   const leftX = blockX;
   engine.debugLineY(leftX);
@@ -333,55 +327,37 @@ const drawBlock = (instance, engine) => {
   const { perfect } = instance;
 
   // 블럭 생성 시 저장된 성경 정보 사용
-  const bookIndex = instance.bibleBookIndex || 1;
   const bookName = instance.bibleBookName || "창세기";
-  const bibleImg = engine.getImg(`bible-${bookIndex}`);
 
-  // 디버깅용 로그 - 블럭이 그려질 때마다 정보 출력
-  console.log(
-    `블럭 그리기: ${instance.name}, bookIndex=${bookIndex}, bookName=${bookName}`
+  // 기본 블록 이미지 사용
+  const bl = engine.getImg(perfect ? "block-perfect" : "block");
+  engine.ctx.drawImage(
+    bl,
+    instance.x,
+    instance.y,
+    instance.width,
+    instance.height
   );
 
-  if (bibleImg) {
-    // 성경책 이미지가 있으면 사용
-    engine.ctx.drawImage(
-      bibleImg,
-      instance.x,
-      instance.y,
-      instance.width,
-      instance.height
-    );
-
-    // 완벽한 착지 시 효과 추가
-    if (perfect) {
-      const { ctx } = engine;
-      ctx.save();
-      ctx.globalAlpha = 0.7;
-      ctx.fillStyle = "#FFD700"; // 금색 효과
-      ctx.fillRect(instance.x, instance.y, instance.width, instance.height);
-      ctx.restore();
-    }
-
-    // 성경책 이름 표시
-    drawBibleText(
-      engine.ctx,
-      instance.x,
-      instance.y,
-      instance.width,
-      instance.height,
-      bookName
-    );
-  } else {
-    // 기본 블록 이미지 사용 (fallback)
-    const bl = engine.getImg(perfect ? "block-perfect" : "block");
-    engine.ctx.drawImage(
-      bl,
-      instance.x,
-      instance.y,
-      instance.width,
-      instance.height
-    );
+  // 완벽한 착지 시 효과 추가
+  if (perfect) {
+    const { ctx } = engine;
+    ctx.save();
+    ctx.globalAlpha = 0.7;
+    ctx.fillStyle = "#FFD700"; // 금색 효과
+    ctx.fillRect(instance.x, instance.y, instance.width, instance.height);
+    ctx.restore();
   }
+
+  // 성경책 이름 표시
+  drawBibleText(
+    engine.ctx,
+    instance.x,
+    instance.y,
+    instance.width,
+    instance.height,
+    bookName
+  );
 };
 
 const drawRotatedBlock = (instance, engine) => {

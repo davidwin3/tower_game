@@ -48,16 +48,6 @@ window.TowerGame = (option = {}) => {
     game.addImg(`f${i}`, pathGenerator(`${backgroundPrefix}-flight-${i}.png`));
   }
 
-  // 모드별 성경책 블록 이미지 로딩
-  const maxBooksToLoad = Math.min(maxBooks, gameMode === "old" ? 39 : 27);
-  const imageStartIndex = gameMode === "old" ? 1 : 40; // 구약: 1-39, 신약: 40-66
-  for (let i = 1; i <= maxBooksToLoad; i += 1) {
-    const imageNumber = imageStartIndex + i - 1;
-    game.addImg(
-      `bible-${imageNumber}`,
-      pathGenerator(`${backgroundPrefix}-book-${i}.png`)
-    );
-  }
   game.swapLayer(0, 1);
   game.addImg("tutorial", pathGenerator("tutorial.png"));
   game.addImg("tutorial-arrow", pathGenerator("tutorial-arrow.png"));
