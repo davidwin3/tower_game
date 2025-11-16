@@ -182,7 +182,15 @@ function hideLoading() {
     loadFinish = true;
     setTimeout(function () {
       $(".loading").hide();
-      $(".landing").show();
+      // 리플레이 중이면 바로 게임 시작, 아니면 랜딩 화면 표시
+      if (isRestarting) {
+        isRestarting = false;
+        gameStart = true;
+        game.playBgm();
+        setTimeout(game.start, 400);
+      } else {
+        $(".landing").show();
+      }
     }, 1000);
   }
 }
@@ -290,6 +298,46 @@ function indexHide() {
   }, 950);
 }
 
+// 게임 재시작 함수
+var isRestarting = false;
+
+function restartGame() {
+  // selectedGameMode가 없으면 페이지 새로고침 (안전장치)
+  if (!selectedGameMode) {
+    window.location.href =
+      window.location.href.split("?")[0] + "?s=" + +new Date();
+    return;
+  }
+
+  // 게임 상태 변수 초기화
+  gameStart = false;
+  score = 0;
+  successCount = 0;
+  isRestarting = true;
+
+  // 모달 닫기
+  $("#modal").hide();
+  $("#over-modal").hide();
+  $("#over-zero").hide();
+
+  // 게임이 이미 존재하면 정리
+  if (game) {
+    game.pauseBgm();
+    // 게임 인스턴스를 새로 생성하기 위해 game을 null로 설정
+    game = null;
+  }
+
+  // 게임 재초기화
+  canvasReady = false;
+  loadError = false;
+  $(".loading").show();
+  $(".loading .title").text("0%");
+  $(".loading .percent").css({ width: "0%" });
+
+  // 게임 로딩 및 시작
+  gameReady();
+}
+
 // 모드 선택 이벤트
 $(".mode-button").on("click", function () {
   selectedGameMode = $(this).data("mode");
@@ -334,7 +382,7 @@ $("#start").on("click", function () {
 });
 
 $(".js-reload").on("click", function () {
-  window.location.href = window.location.href + "?s=" + +new Date();
+  restartGame();
 });
 
 $(".js-invite").on("click", function () {
@@ -343,6 +391,34 @@ $(".js-invite").on("click", function () {
 
 $(".wxShare").on("click", function () {
   $(".wxShare").hide();
+});
+
+// 모드 선택 버튼 클릭 이벤트
+$(".js-mode-select").on("click", function () {
+  // 모달 닫기
+  $("#modal").hide();
+  $("#over-modal").hide();
+  $("#over-zero").hide();
+
+  // 게임 상태 초기화
+  gameStart = false;
+  score = 0;
+  successCount = 0;
+
+  // 게임이 이미 존재하면 정리
+  if (game) {
+    game.pauseBgm();
+    game = null;
+  }
+
+  // 모드 선택 화면으로 이동
+  selectedGameMode = null;
+  option.gameMode = null;
+  option.maxBooks = null;
+
+  // 모드 선택 화면 표시
+  $(".landing").hide();
+  $(".mode-selection").removeClass("slideTop").show();
 });
 
 // listener
