@@ -257,6 +257,9 @@ function gameReady() {
   game = TowerGame(option);
   game.load(function () {
     game.init();
+    if (window.BibleDailySDK) {
+      window.BibleDailySDK.onGameStart();
+    }
     setTimeout(function () {
       game.playBgm();
     });
