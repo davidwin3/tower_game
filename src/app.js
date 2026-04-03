@@ -1,150 +1,16 @@
 import "./styles/main.css";
-import { Engine, Instance } from "cooljs";
+import { createEngine } from "./engine";
 import { touchEventHandler } from "./utils";
-import { background } from "./background";
-import { lineAction, linePainter } from "./line";
-import { cloudAction, cloudPainter } from "./cloud";
-import { hookAction, hookPainter } from "./hook";
-import { tutorialAction, tutorialPainter } from "./tutorial";
+import { createBackground } from "./background";
+import { createLine } from "./line";
+import { createCloud } from "./cloud";
+import { createHook } from "./hook";
+import { createTutorial } from "./tutorial";
 import * as constant from "./constant";
-import { startAnimate, endAnimate } from "./animateFuncs";
+import { startAnimate, endAnimate, resetHud } from "./animateFuncs";
 
-window.TowerGame = (option = {}) => {
-  const {
-    width,
-    height,
-    canvasId,
-    soundOn,
-    gameMode = "old", // 기본값: 구약
-    maxBooks = 39,
-  } = option;
-  const game = new Engine({
-    canvasId,
-    highResolution: true,
-    width,
-    height,
-    soundOn,
-  });
-  const pathGenerator = (path) => `./assets/${path}`;
-
-  // 기본 게임 이미지
-  game.addImg("background", pathGenerator("background.png"));
-  game.addImg("hook", pathGenerator("hook.png"));
-  game.addImg("blockRope", pathGenerator("block-rope.png"));
-  game.addImg("block", pathGenerator("block.png"));
-  game.addImg("block-perfect", pathGenerator("block-perfect.png"));
-
-  // 모드별 배경 이미지 로딩 (c1-c8 대체)
-  const backgroundPrefix = gameMode === "old" ? "old" : "new";
-  for (let i = 1; i <= 8; i += 1) {
-    game.addImg(`c${i}`, pathGenerator(`${backgroundPrefix}-bg-${i}.png`));
-  }
-
-  // 비행 레이어 추가
-  game.addLayer(constant.flightLayer);
-
-  // 모드별 비행 이미지 로딩 (f1-f7 대체)
-  for (let i = 1; i <= 7; i += 1) {
-    game.addImg(`f${i}`, pathGenerator(`${backgroundPrefix}-flight-${i}.png`));
-  }
-
-  game.swapLayer(0, 1);
-  game.addImg("tutorial", pathGenerator("tutorial.png"));
-  game.addImg("tutorial-arrow", pathGenerator("tutorial-arrow.png"));
-  game.addImg("heart", pathGenerator("heart.png"));
-  game.addImg("score", pathGenerator("score.png"));
-  game.addAudio("drop-perfect", pathGenerator("drop-perfect.mp3"));
-  game.addAudio("drop", pathGenerator("drop.mp3"));
-  game.addAudio("game-over", pathGenerator("game-over.mp3"));
-  game.addAudio("rotate", pathGenerator("rotate.mp3"));
-  game.addAudio("bgm", pathGenerator("bgm.mp3"));
-  game.setVariable(constant.blockWidth, game.width * 0.25);
-  game.setVariable(
-    constant.blockHeight,
-    game.getVariable(constant.blockWidth) * 0.71
-  );
-  game.setVariable(constant.cloudSize, game.width * 0.3);
-  game.setVariable(constant.ropeHeight, game.height * 0.4);
-  game.setVariable(constant.blockCount, 0);
-  game.setVariable(constant.successCount, 0);
-  game.setVariable(constant.failedCount, 0);
-  game.setVariable(constant.gameScore, 0);
-  game.setVariable(constant.hardMode, false);
-  game.setVariable(constant.gameUserOption, option);
-  game.setVariable(constant.gameMode, gameMode);
-  game.setVariable(constant.maxBooks, maxBooks);
-  for (let i = 1; i <= 4; i += 1) {
-    const cloud = new Instance({
-      name: `cloud_${i}`,
-      action: cloudAction,
-      painter: cloudPainter,
-    });
-    cloud.index = i;
-    cloud.count = 5 - i;
-    game.addInstance(cloud);
-  }
-  const line = new Instance({
-    name: "line",
-    action: lineAction,
-    painter: linePainter,
-  });
-  game.addInstance(line);
-  const hook = new Instance({
-    name: "hook",
-    action: hookAction,
-    painter: hookPainter,
-  });
-  game.addInstance(hook);
-
-  game.startAnimate = startAnimate;
-  game.endAnimate = endAnimate;
-  game.paintUnderInstance = background;
-  game.addKeyDownListener("enter", () => {
-    if (game.debug) game.togglePaused();
-  });
-  game.touchStartListener = () => {
-    touchEventHandler(game);
-  };
-
-  game.playBgm = () => {
-    game.playAudio("bgm", true);
-  };
-
-  game.pauseBgm = () => {
-    game.pauseAudio("bgm");
-  };
-
-  game.start = () => {
-    const tutorial = new Instance({
-      name: "tutorial",
-      action: tutorialAction,
-      painter: tutorialPainter,
-    });
-    game.addInstance(tutorial);
-    const tutorialArrow = new Instance({
-      name: "tutorial-arrow",
-      action: tutorialAction,
-      painter: tutorialPainter,
-    });
-    game.addInstance(tutorialArrow);
-    game.setTimeMovement(constant.bgInitMovement, 500);
-    game.setTimeMovement(constant.tutorialMovement, 500);
-    game.setVariable(constant.gameStartNow, true);
-  };
-
-  return game;
-};
-
-var domReady,
-  loadFinish,
-  canvasReady,
-  loadError,
-  gameStart,
-  game,
-  score,
-  successCount;
-// init window height and width
-var gameWidth = window.innerWidth;
+// ── Window sizing ──────────────────────────────────────────────────────────────
+var gameWidth  = window.innerWidth;
 var gameHeight = window.innerHeight;
 var ratio = 1.5;
 if (gameHeight / gameWidth < ratio) {
@@ -153,58 +19,158 @@ if (gameHeight / gameWidth < ratio) {
 $(".content").css({ height: gameHeight + "px", width: gameWidth + "px" });
 $(".js-modal-content").css({ width: gameWidth + "px" });
 
-// loading animation
-// 게임 모드 변수
+// ── App state ──────────────────────────────────────────────────────────────────
+var domReady       = false;
+var loadError      = false;
+var gameStart      = false;
+var isRestarting   = false;
 var selectedGameMode = null;
+var score          = 0;
+var successCount   = 0;
+var engine         = null;   // current engine instance
 
-function hideLoading() {
-  // 초기 로딩: DOM만 준비되면 모드 선택 화면 표시
-  if (domReady && !selectedGameMode) {
-    setTimeout(function () {
-      $(".loading").hide();
-      $(".mode-selection").show();
-    }, 1000);
-    return;
-  }
-  // 게임 로딩: DOM과 캔버스가 모두 준비되면 랜딩 화면 표시
-  if (domReady && canvasReady) {
-    $("#canvas").show();
-    loadFinish = true;
-    setTimeout(function () {
-      $(".loading").hide();
-      // 리플레이 중이면 바로 게임 시작, 아니면 랜딩 화면 표시
-      if (isRestarting) {
-        isRestarting = false;
-        gameStart = true;
-        game.playBgm();
-        setTimeout(game.start, 400);
-      } else {
-        $(".landing").show();
-      }
-    }, 1000);
-  }
-}
+// ── Game options ───────────────────────────────────────────────────────────────
+const option = {
+  width:    gameWidth,
+  height:   gameHeight,
+  canvasId: "canvas",
+  soundOn:  true,
+  setGameScore:   (s) => { score = s; },
+  setGameSuccess: (s) => { successCount = s; },
+  setGameFailed:  (f) => {
+    $("#score").text(score);
+    if (f >= 3) overShowOver();
+  },
+};
 
+// ── TowerGame factory ──────────────────────────────────────────────────────────
+window.TowerGame = async (opt = {}) => {
+  const {
+    width, height, canvasId, soundOn,
+    gameMode = "old",
+    maxBooks = 39,
+  } = opt;
+
+  const eng = await createEngine({ canvasId, width, height, soundOn });
+  const pathGen = (p) => `./assets/${p}`;
+
+  // ── Queue images ─────────────────────────────────────────────────────────
+  eng.addImg("background",   pathGen("background.png"));
+  eng.addImg("hook",         pathGen("hook.png"));
+  eng.addImg("blockRope",    pathGen("block-rope.png"));
+  eng.addImg("block",        pathGen("block.png"));
+  eng.addImg("block-perfect",pathGen("block-perfect.png"));
+  eng.addImg("tutorial",       pathGen("tutorial.png"));
+  eng.addImg("tutorial-arrow", pathGen("tutorial-arrow.png"));
+  eng.addImg("heart",        pathGen("heart.png"));
+  eng.addImg("score",        pathGen("score.png"));
+
+  const bgPrefix = gameMode === "old" ? "old" : "new";
+  for (let i = 1; i <= 8; i++) eng.addImg(`c${i}`, pathGen(`${bgPrefix}-bg-${i}.png`));
+  for (let i = 1; i <= 7; i++) eng.addImg(`f${i}`, pathGen(`${bgPrefix}-flight-${i}.png`));
+
+  // ── Queue audio ───────────────────────────────────────────────────────────
+  eng.addAudio("drop-perfect", pathGen("drop-perfect.mp3"));
+  eng.addAudio("drop",         pathGen("drop.mp3"));
+  eng.addAudio("game-over",    pathGen("game-over.mp3"));
+  eng.addAudio("rotate",       pathGen("rotate.mp3"));
+  eng.addAudio("bgm",          pathGen("bgm.mp3"));
+
+  // ── Initial state variables ───────────────────────────────────────────────
+  eng.setVariable(constant.blockWidth,  width  * 0.25);
+  eng.setVariable(constant.blockHeight, width  * 0.25 * 0.71);
+  eng.setVariable(constant.cloudSize,   width  * 0.3);
+  eng.setVariable(constant.ropeHeight,  height * 0.4);
+  eng.setVariable(constant.blockCount,  0);
+  eng.setVariable(constant.successCount, 0);
+  eng.setVariable(constant.failedCount,  0);
+  eng.setVariable(constant.gameScore,    0);
+  eng.setVariable(constant.hardMode,     false);
+  eng.setVariable(constant.gameUserOption, opt);
+  eng.setVariable(constant.gameMode,    gameMode);
+  eng.setVariable(constant.maxBooks,    maxBooks);
+
+  // ── Game-loop callbacks (called from ticker) ──────────────────────────────
+  eng.app.ticker.add(() => {
+    if (!eng.getVariable(constant.gameStartNow)) return;
+    startAnimate(eng);
+    endAnimate(eng);
+  });
+
+  // ── Public API (mirrors cooljs game object) ───────────────────────────────
+  eng.playBgm  = () => eng.playAudio("bgm", true);
+  eng.pauseBgm = () => eng.pauseAudio("bgm");
+
+  eng.start = () => {
+    // Clouds
+    for (let i = 1; i <= 4; i++) {
+      const cloud = createCloud(eng, i);
+      eng.addInstance(cloud);
+    }
+
+    // Background
+    const bg = createBackground(eng);
+    eng.addInstance(bg);
+
+    // Line
+    const line = createLine(eng);
+    eng.addInstance(line);
+
+    // Hook
+    const hook = createHook(eng);
+    eng.addInstance(hook);
+
+    // Tutorial
+    const tut      = createTutorial(eng, "tutorial");
+    const tutArrow = createTutorial(eng, "tutorial-arrow");
+    eng.addInstance(tut);
+    eng.addInstance(tutArrow);
+
+    // Kick off tweens
+    eng.setTimeMovement(constant.bgInitMovement,   500);
+    eng.setTimeMovement(constant.tutorialMovement, 500);
+    eng.setVariable(constant.gameStartNow, true);
+
+    // Touch / click handler
+    eng.app.canvas.addEventListener("pointerdown", () => {
+      touchEventHandler(eng);
+    });
+  };
+
+  eng.addKeyDownListener("enter", () => {
+    if (eng.debug) eng.togglePaused();
+  });
+
+  return eng;
+};
+
+// ── DOM helpers ────────────────────────────────────────────────────────────────
 function updateLoading(status) {
-  var success = status.success;
-  var total = status.total;
-  var failed = status.failed;
+  const { success, total, failed } = status;
   if (failed > 0 && !loadError) {
     loadError = true;
     alert("Network error... Please try again.");
     return;
   }
-  var percent = parseInt((success / total) * 100);
-  if (percent === 100 && !canvasReady) {
-    canvasReady = true;
-    hideLoading();
-  }
-  percent = percent > 98 ? 98 : percent;
-  percent = percent + "%";
-  $(".loading .title").text(percent);
-  $(".loading .percent").css({
-    width: percent,
-  });
+  let percent = Math.min(parseInt((success / total) * 100), 98);
+  $(".loading .title").text(percent + "%");
+  $(".loading .percent").css({ width: percent + "%" });
+}
+
+function onLoadComplete() {
+  $("#canvas").show();
+  setTimeout(() => {
+    $(".loading").hide();
+    if (isRestarting) {
+      isRestarting = false;
+      gameStart = true;
+      engine.playBgm();
+      setTimeout(engine.start, 400);
+    } else {
+      $(".landing").show();
+    }
+    if (window.BibleDailySDK) window.BibleDailySDK.onGameStart();
+  }, 1000);
 }
 
 function overShowOver() {
@@ -212,214 +178,115 @@ function overShowOver() {
   $("#over-modal").show();
   $("#over-zero").show();
 
-  // 성경 모드별 메시지 추가
   if (selectedGameMode) {
-    const modeText = selectedGameMode === "old" ? "구약 성경" : "신약 성경";
-    const maxBooks = selectedGameMode === "old" ? 39 : 27;
-    const completedBooks = Math.min(successCount, maxBooks);
-
-    let message = `${modeText} 모드에서 ${completedBooks}권을 쌓았습니다!`;
-
-    if (completedBooks === maxBooks) {
-      message = `🎉 축하합니다! ${modeText} ${maxBooks}권을 모두 완성했습니다! 🎉`;
-    } else if (completedBooks >= maxBooks * 0.8) {
-      message = `👏 훌륭합니다! ${modeText} ${completedBooks}권을 쌓았습니다!`;
+    const modeText   = selectedGameMode === "old" ? "구약 성경" : "신약 성경";
+    const maxB       = selectedGameMode === "old" ? 39 : 27;
+    const completed  = Math.min(successCount, maxB);
+    let message      = `${modeText} 모드에서 ${completed}권을 쌓았습니다!`;
+    if (completed === maxB) {
+      message = `🎉 축하합니다! ${modeText} ${maxB}권을 모두 완성했습니다! 🎉`;
+    } else if (completed >= maxB * 0.8) {
+      message = `👏 훌륭합니다! ${modeText} ${completed}권을 쌓았습니다!`;
     }
-
     $(".tip p").text(message);
   }
 }
 
-// game customization options
-const option = {
-  width: gameWidth,
-  height: gameHeight,
-  canvasId: "canvas",
-  soundOn: true,
-  setGameScore: function (s) {
-    score = s;
-  },
-  setGameSuccess: function (s) {
-    successCount = s;
-  },
-  setGameFailed: function (f) {
-    $("#score").text(score);
-    if (f >= 3) overShowOver();
-  },
-};
+async function gameReady() {
+  if (!option.gameMode) return;
 
-// game init with option
-function gameReady() {
-  // 모드가 선택되지 않았으면 게임 초기화를 하지 않음
-  if (!option.gameMode) {
-    return;
-  }
-  game = TowerGame(option);
-  game.load(function () {
-    game.init();
-    if (window.BibleDailySDK) {
-      window.BibleDailySDK.onGameStart();
-    }
-    setTimeout(function () {
-      game.playBgm();
-    });
-  }, updateLoading);
-}
-
-// 게임 초기화는 모드 선택 후에 수행됨
-// var isWechat =
-//   navigator.userAgent.toLowerCase().indexOf("micromessenger") !== -1;
-// if (isWechat) {
-//   document.addEventListener("WeixinJSBridgeReady", gameReady, false);
-// } else {
-//   gameReady();
-// }
-
-function modeSelectionHide() {
-  $(".mode-selection").addClass("slideTop");
-  setTimeout(function () {
-    $(".mode-selection").hide();
-    // 랜딩 화면은 로딩 완료 후 hideLoading()에서 표시됨
-  }, 950);
-}
-
-function indexHide() {
-  $(".landing .action-1").addClass("slideTop");
-  $(".landing .action-2").addClass("slideBottom");
-  setTimeout(function () {
-    $(".landing").hide();
-  }, 950);
-}
-
-// 게임 재시작 함수
-var isRestarting = false;
-
-function restartGame() {
-  // selectedGameMode가 없으면 페이지 새로고침 (안전장치)
-  if (!selectedGameMode) {
-    window.location.href =
-      window.location.href.split("?")[0] + "?s=" + +new Date();
-    return;
-  }
-
-  // 게임 상태 변수 초기화
-  gameStart = false;
-  score = 0;
-  successCount = 0;
-  isRestarting = true;
-
-  // 모달 닫기
-  $("#modal").hide();
-  $("#over-modal").hide();
-  $("#over-zero").hide();
-
-  // 게임이 이미 존재하면 정리
-  if (game) {
-    game.pauseBgm();
-    // 게임 인스턴스를 새로 생성하기 위해 game을 null로 설정
-    game = null;
-  }
-
-  // 게임 재초기화
-  canvasReady = false;
-  loadError = false;
-  $(".loading").show();
   $(".loading .title").text("0%");
   $(".loading .percent").css({ width: "0%" });
+  $(".loading").show();
 
-  // 게임 로딩 및 시작
-  gameReady();
+  engine = await window.TowerGame(option);
+  engine.load(onLoadComplete, updateLoading);
 }
 
-// 모드 선택 이벤트
+// ── Event handlers ─────────────────────────────────────────────────────────────
 $(".mode-button").on("click", function () {
   selectedGameMode = $(this).data("mode");
-  console.log("Selected mode:", selectedGameMode);
-
-  // 선택된 모드에 따라 게임 설정 업데이트
-  if (selectedGameMode === "old") {
-    option.gameMode = "old";
-    option.maxBooks = 39;
-  } else {
-    option.gameMode = "new";
-    option.maxBooks = 27;
-  }
-
-  // 모드 선택 후 게임 초기화
-  canvasReady = false;
+  option.gameMode  = selectedGameMode;
+  option.maxBooks  = selectedGameMode === "old" ? 39 : 27;
   loadError = false;
-  $(".loading").show();
-  $(".loading .title").text("0%");
-  $(".loading .percent").css({ width: "0%" });
 
-  var isWechat =
-    navigator.userAgent.toLowerCase().indexOf("micromessenger") !== -1;
+  const isWechat = navigator.userAgent.toLowerCase().indexOf("micromessenger") !== -1;
   if (isWechat) {
     document.addEventListener("WeixinJSBridgeReady", gameReady, false);
   } else {
     gameReady();
   }
 
-  modeSelectionHide();
+  // Slide mode selection off screen
+  $(".mode-selection").addClass("slideTop");
+  setTimeout(() => { $(".mode-selection").hide(); }, 950);
 });
 
-// click event
 $("#start").on("click", function () {
   if (gameStart || !selectedGameMode) return;
   gameStart = true;
-  setTimeout(function () {
-    game.playBgm();
-  });
-  indexHide();
-  setTimeout(game.start, 400);
+  $(".landing .action-1").addClass("slideTop");
+  $(".landing .action-2").addClass("slideBottom");
+  setTimeout(() => { $(".landing").hide(); }, 950);
+  engine.playBgm();
+  setTimeout(engine.start, 400);
 });
 
 $(".js-reload").on("click", function () {
-  restartGame();
-});
-
-$(".js-invite").on("click", function () {
-  $(".wxShare").show();
-});
-
-$(".wxShare").on("click", function () {
-  $(".wxShare").hide();
-});
-
-// 모드 선택 버튼 클릭 이벤트
-$(".js-mode-select").on("click", function () {
-  // 모달 닫기
+  if (!selectedGameMode) {
+    window.location.href = window.location.href.split("?")[0] + "?s=" + +new Date();
+    return;
+  }
+  gameStart    = false;
+  score        = 0;
+  successCount = 0;
+  isRestarting = true;
   $("#modal").hide();
   $("#over-modal").hide();
   $("#over-zero").hide();
 
-  // 게임 상태 초기화
-  gameStart = false;
-  score = 0;
+  if (engine) {
+    engine.pauseBgm();
+    engine.resetState();
+    resetHud();
+    engine = null;
+  }
+  loadError = false;
+  gameReady();
+});
+
+$(".js-invite").on("click", function () { $(".wxShare").show(); });
+$(".wxShare").on("click",   function () { $(".wxShare").hide(); });
+
+$(".js-mode-select").on("click", function () {
+  $("#modal").hide();
+  $("#over-modal").hide();
+  $("#over-zero").hide();
+
+  gameStart    = false;
+  score        = 0;
   successCount = 0;
 
-  // 게임이 이미 존재하면 정리
-  if (game) {
-    game.pauseBgm();
-    game = null;
+  if (engine) {
+    engine.pauseBgm();
+    engine.resetState();
+    resetHud();
+    engine = null;
   }
 
-  // 모드 선택 화면으로 이동
   selectedGameMode = null;
-  option.gameMode = null;
-  option.maxBooks = null;
+  option.gameMode  = null;
+  option.maxBooks  = null;
 
-  // 모드 선택 화면 표시
   $(".landing").hide();
   $(".mode-selection").removeClass("slideTop").show();
 });
 
-// listener
-window.addEventListener(
-  "load",
-  function () {
-    domReady = true;
-    hideLoading();
-  },
-  false
-);
+window.addEventListener("load", () => {
+  domReady = true;
+  // Show mode selection screen immediately (no pre-game load needed)
+  setTimeout(() => {
+    $(".loading").hide();
+    $(".mode-selection").show();
+  }, 500);
+});

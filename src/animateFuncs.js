@@ -1,126 +1,143 @@
-import { Instance } from 'cooljs'
-import { blockAction, blockPainter } from './block'
-import {
-  checkMoveDown,
-  getMoveDownValue,
-  drawYellowString,
-  getAngleBase
-} from './utils'
-import { addFlight } from './flight'
-import * as constant from './constant'
+import * as PIXI from "pixi.js";
+import { createBlock } from "./block";
+import { checkMoveDown, getMoveDownValue, getAngleBase } from "./utils";
+import { addFlight } from "./flight";
+import * as constant from "./constant";
 
+// ── HUD container (created once, lives in engine.layers.hud) ─────────────────
+let hudInitialized = false;
+let floorLabel, floorValue, scoreImg, scoreValue, heartSprites;
+
+function initHud(engine) {
+  if (hudInitialized) return;
+  hudInitialized = true;
+
+  const w = engine.width;
+  const hud = engine.layers.hud;
+
+  // "floor" label
+  floorLabel = new PIXI.Text({
+    text: "floor",
+    style: { fontFamily: "Arial", fontWeight: "bold", fontSize: w * 0.06, fill: "#FAD961", stroke: { color: "#FFF", width: w * 0.006 } },
+  });
+  floorLabel.x = w * 0.04;
+  floorLabel.y = w * 0.06;
+
+  // Floor number (larger, wenxue-like)
+  floorValue = new PIXI.Text({
+    text: "0",
+    style: { fontFamily: "wenxue, Arial", fontSize: w * 0.17, fill: "#FAD961", stroke: { color: "#FFF", width: w * 0.017 } },
+  });
+  floorValue.anchor.set(1, 1);
+  floorValue.x = w * 0.22;
+  floorValue.y = w * 0.2;
+
+  // Score icon (Sprite)
+  scoreImg = new PIXI.Sprite(engine.getTexture("score"));
+  const scoreNatW = scoreImg.texture.width  || 1;
+  const scoreNatH = scoreImg.texture.height || 1;
+  const scoreW    = w * 0.35;
+  scoreImg.width  = scoreW;
+  scoreImg.height = (scoreNatH * scoreW) / scoreNatW;
+  scoreImg.x      = w * 0.61;
+  scoreImg.y      = w * 0.038;
+
+  // Score number
+  scoreValue = new PIXI.Text({
+    text: "0",
+    style: { fontFamily: "wenxue, Arial", fontSize: w * 0.06, fill: "#FAD961", stroke: { color: "#FFF", width: w * 0.006 } },
+  });
+  scoreValue.anchor.set(1, 1);
+  scoreValue.x = w * 0.9;
+  scoreValue.y = w * 0.11;
+
+  // Heart sprites (3)
+  heartSprites = [];
+  const heartTex   = engine.getTexture("heart");
+  const heartNatW  = heartTex.width  || 1;
+  const heartNatH  = heartTex.height || 1;
+  const heartW     = w * 0.08;
+  const heartH     = (heartNatH * heartW) / heartNatW;
+  for (let i = 0; i < 3; i++) {
+    const s = new PIXI.Sprite(heartTex);
+    s.width  = heartW;
+    s.height = heartH;
+    s.x      = w * 0.66 + i * heartW;
+    s.y      = w * 0.16;
+    heartSprites.push(s);
+    hud.addChild(s);
+  }
+
+  hud.addChild(floorLabel, floorValue, scoreImg, scoreValue);
+}
+
+// ── endAnimate — update HUD values each frame ─────────────────────────────────
 export const endAnimate = (engine) => {
-  const gameStartNow = engine.getVariable(constant.gameStartNow)
-  if (!gameStartNow) return
-  const successCount = engine.getVariable(constant.successCount, 0)
-  const failedCount = engine.getVariable(constant.failedCount)
-  const gameScore = engine.getVariable(constant.gameScore, 0)
-  const threeFiguresOffset = Number(successCount) > 99 ? engine.width * 0.1 : 0
+  if (!engine.getVariable(constant.gameStartNow)) return;
+  initHud(engine);
 
-  drawYellowString(engine, {
-    string: 'floor',
-    size: engine.width * 0.06,
-    x: (engine.width * 0.24) + threeFiguresOffset,
-    y: engine.width * 0.12,
-    textAlign: 'left',
-    fontName: 'Arial',
-    fontWeight: 'bold'
-  })
-  drawYellowString(engine, {
-    string: successCount,
-    size: engine.width * 0.17,
-    x: (engine.width * 0.22) + threeFiguresOffset,
-    y: engine.width * 0.2,
-    textAlign: 'right'
-  })
-  const score = engine.getImg('score')
-  const scoreWidth = score.width
-  const scoreHeight = score.height
-  const zoomedWidth = engine.width * 0.35
-  const zoomedHeight = (scoreHeight * zoomedWidth) / scoreWidth
-  engine.ctx.drawImage(
-    score,
-    engine.width * 0.61,
-    engine.width * 0.038,
-    zoomedWidth,
-    zoomedHeight
-  )
-  drawYellowString(engine, {
-    string: gameScore,
-    size: engine.width * 0.06,
-    x: engine.width * 0.9,
-    y: engine.width * 0.11,
-    textAlign: 'right'
-  })
-  const { ctx } = engine
-  const heart = engine.getImg('heart')
-  const heartWidth = heart.width
-  const heartHeight = heart.height
-  const zoomedHeartWidth = engine.width * 0.08
-  const zoomedHeartHeight = (heartHeight * zoomedHeartWidth) / heartWidth
-  for (let i = 1; i <= 3; i += 1) {
-    ctx.save()
-    if (i <= failedCount) {
-      ctx.globalAlpha = 0.2
-    }
-    ctx.drawImage(
-      heart,
-      (engine.width * 0.66) + ((i - 1) * zoomedHeartWidth),
-      engine.width * 0.16,
-      zoomedHeartWidth,
-      zoomedHeartHeight
-    )
-    ctx.restore()
-  }
-}
+  const successCount = engine.getVariable(constant.successCount, 0);
+  const failedCount  = engine.getVariable(constant.failedCount,  0);
+  const gameScore    = engine.getVariable(constant.gameScore,    0);
 
+  // 3-figure adjustment for floor label x position
+  const offset = Number(successCount) > 99 ? engine.width * 0.1 : 0;
+  floorLabel.x = engine.width * 0.04 + offset;
+  floorValue.x = engine.width * 0.22 + offset;
+
+  floorValue.text  = String(successCount);
+  scoreValue.text  = String(gameScore);
+
+  // Heart dimming
+  heartSprites.forEach((s, i) => {
+    s.alpha = i < failedCount ? 0.2 : 1;
+  });
+};
+
+// ── startAnimate — spawn next block and trigger flight animations ─────────────
 export const startAnimate = (engine) => {
-  const gameStartNow = engine.getVariable(constant.gameStartNow)
-  if (!gameStartNow) return
-  const lastBlock = engine.getInstance(`block_${engine.getVariable(constant.blockCount)}`)
-  if (!lastBlock || [constant.land, constant.out].indexOf(lastBlock.status) > -1) {
-    if (checkMoveDown(engine) && getMoveDownValue(engine)) return
-    if (engine.checkTimeMovement(constant.hookUpMovement)) return
-    const angleBase = getAngleBase(engine)
-    const initialAngle = (Math.PI
-        * engine.utils.random(angleBase, angleBase + 5)
-        * engine.utils.randomPositiveNegative()
-    ) / 180
-    engine.setVariable(constant.blockCount, engine.getVariable(constant.blockCount) + 1)
-    engine.setVariable(constant.initialAngle, initialAngle)
-    engine.setTimeMovement(constant.hookDownMovement, 500)
-    const block = new Instance({
-      name: `block_${engine.getVariable(constant.blockCount)}`,
-      action: blockAction,
-      painter: blockPainter
-    })
-    engine.addInstance(block)
-  }
-  const successCount = Number(engine.getVariable(constant.successCount, 0))
-  switch (successCount) {
-    case 2:
-      addFlight(engine, 1, 'leftToRight')
-      break
-    case 6:
-      addFlight(engine, 2, 'rightToLeft')
-      break
-    case 8:
-      addFlight(engine, 3, 'leftToRight')
-      break
-    case 14:
-      addFlight(engine, 4, 'bottomToTop')
-      break
-    case 18:
-      addFlight(engine, 5, 'bottomToTop')
-      break
-    case 22:
-      addFlight(engine, 6, 'bottomToTop')
-      break
-    case 25:
-      addFlight(engine, 7, 'rightTopToLeft')
-      break
-    default:
-      break
-  }
-}
+  if (!engine.getVariable(constant.gameStartNow)) return;
 
+  const blockCount = engine.getVariable(constant.blockCount);
+  const lastBlock  = engine.getInstance(`block_${blockCount}`);
+
+  if (!lastBlock || [constant.land, constant.out].indexOf(lastBlock.status) > -1) {
+    if (checkMoveDown(engine) && getMoveDownValue(engine)) return;
+    if (engine.checkTimeMovement(constant.hookUpMovement)) return;
+
+    const angleBase    = getAngleBase(engine);
+    const initialAngle =
+      (Math.PI *
+        engine.utils.random(angleBase, angleBase + 5) *
+        engine.utils.randomPositiveNegative()) /
+      180;
+
+    const nextCount = blockCount + 1;
+    engine.setVariable(constant.blockCount,    nextCount);
+    engine.setVariable(constant.initialAngle,  initialAngle);
+    engine.setTimeMovement(constant.hookDownMovement, 500);
+
+    const block = createBlock(engine, nextCount);
+    engine.addInstance(block);
+  }
+
+  // Milestone flight animations
+  const successCount = Number(engine.getVariable(constant.successCount, 0));
+  switch (successCount) {
+    case 2:  addFlight(engine, 1, "leftToRight");    break;
+    case 6:  addFlight(engine, 2, "rightToLeft");    break;
+    case 8:  addFlight(engine, 3, "leftToRight");    break;
+    case 14: addFlight(engine, 4, "bottomToTop");    break;
+    case 18: addFlight(engine, 5, "bottomToTop");    break;
+    case 22: addFlight(engine, 6, "bottomToTop");    break;
+    case 25: addFlight(engine, 7, "rightTopToLeft"); break;
+    default: break;
+  }
+};
+
+/** Call when game restarts so HUD is rebuilt fresh. */
+export const resetHud = () => {
+  hudInitialized = false;
+  floorLabel = floorValue = scoreImg = scoreValue = null;
+  heartSprites = null;
+};

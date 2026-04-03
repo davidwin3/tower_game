@@ -1,54 +1,74 @@
-import { getSwingBlockVelocity } from './utils'
-import * as constant from './constant'
+import * as PIXI from "pixi.js";
+import { getSwingBlockVelocity } from "./utils";
+import * as constant from "./constant";
 
-export const hookAction = (instance, engine, time) => {
-  const ropeHeight = engine.getVariable(constant.ropeHeight)
-  if (!instance.ready) {
-    instance.x = engine.width / 2
-    instance.y = ropeHeight * -1.5
-    instance.ready = true
-  }
-  engine.getTimeMovement(
-    constant.hookUpMovement,
-    [[instance.y, instance.y - ropeHeight]],
-    (value) => {
-      instance.y = value
-    },
-    {
-      after: () => {
-        instance.y = ropeHeight * -1.5
+/**
+ * createHook — PixiJS hook/rope instance factory.
+ */
+export function createHook(engine) {
+  const sprite = new PIXI.Sprite();
+  const container = new PIXI.Container();
+  container.addChild(sprite);
+
+  let ready = false;
+
+  const inst = {
+    name: "hook",
+    container,
+    visible: true,
+    layer: "hook",
+
+    // Shared state read by block.js
+    x: 0,
+    y: 0,
+    angle: 0,
+    weightX: 0,
+    weightY: 0,
+
+    tickFn: (_deltaMS, now) => {
+      const ropeHeight = engine.getVariable(constant.ropeHeight);
+
+      if (!ready) {
+        inst.x = engine.width / 2;
+        inst.y = ropeHeight * -1.5;
+        ready  = true;
+        sprite.texture = engine.getTexture("hook");
       }
-    }
-  )
-  engine.getTimeMovement(
-    constant.hookDownMovement,
-    [[instance.y, instance.y + ropeHeight]],
-    (value) => {
-      instance.y = value
+
+      engine.getTimeMovement(
+        constant.hookUpMovement,
+        [[inst.y, inst.y - ropeHeight]],
+        (value) => { inst.y = value; },
+        {
+          name: "hook-up",
+          after: () => { inst.y = ropeHeight * -1.5; },
+        }
+      );
+
+      engine.getTimeMovement(
+        constant.hookDownMovement,
+        [[inst.y, inst.y + ropeHeight]],
+        (value) => { inst.y = value; },
+        { name: "hook" }
+      );
+
+      const initialAngle = engine.getVariable(constant.initialAngle);
+      inst.angle   = initialAngle * getSwingBlockVelocity(engine, now);
+      inst.weightX = inst.x + Math.sin(inst.angle) * ropeHeight;
+      inst.weightY = inst.y + Math.cos(inst.angle) * ropeHeight;
+
+      // Render: rotate hook sprite around its top-center
+      const ropeWidth = ropeHeight * 0.1;
+      sprite.width  = ropeWidth;
+      sprite.height = ropeHeight + 5;
+      // Place sprite so top-center aligns with inst.x, inst.y
+      sprite.anchor.set(0.5, 0);
+      container.x        = inst.x;
+      container.y        = inst.y;
+      container.rotation = Math.PI * 2 - inst.angle;
+      container.visible  = inst.visible;
     },
-    {
-      name: 'hook'
-    }
-  )
-  const initialAngle = engine.getVariable(constant.initialAngle)
-  instance.angle = initialAngle *
-    getSwingBlockVelocity(engine, time)
-  instance.weightX = instance.x +
-    (Math.sin(instance.angle) * ropeHeight)
-  instance.weightY = instance.y +
-    (Math.cos(instance.angle) * ropeHeight)
-}
+  };
 
-export const hookPainter = (instance, engine) => {
-  const { ctx } = engine
-  const ropeHeight = engine.getVariable(constant.ropeHeight)
-  const ropeWidth = ropeHeight * 0.1
-  const hook = engine.getImg('hook')
-  ctx.save()
-  ctx.translate(instance.x, instance.y)
-  ctx.rotate((Math.PI * 2) - instance.angle)
-  ctx.translate(-instance.x, -instance.y)
-  engine.ctx.drawImage(hook, instance.x - (ropeWidth / 2), instance.y, ropeWidth, ropeHeight + 5)
-  ctx.restore()
+  return inst;
 }
-
