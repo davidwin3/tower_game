@@ -1,8 +1,8 @@
+import * as PIXI from "pixi.js";
 import {
   getMoveDownValue,
   getLandBlockVelocity,
   getSwingBlockVelocity,
-  touchEventHandler,
   addSuccessCount,
   addFailedCount,
   addScore,
@@ -10,277 +10,9 @@ import {
 import * as constant from "./constant";
 import { getBibleBook } from "../bible-config.js";
 
-const checkCollision = (block, line) => {
-  // 0 goon 1 drop 2 rotate left 3 rotate right 4 ok 5 perfect
-  if (block.y + block.height >= line.y) {
-    if (
-      block.x < line.x - block.calWidth ||
-      block.x > line.collisionX + block.calWidth
-    ) {
-      return 1;
-    }
-    if (block.x < line.x) {
-      return 2;
-    }
-    if (block.x > line.collisionX) {
-      return 3;
-    }
-    if (
-      block.x > line.x + block.calWidth * 0.8 &&
-      block.x < line.x + block.calWidth * 1.2
-    ) {
-      // -10% +10%
-      return 5;
-    }
-    return 4;
-  }
-  return 0;
-};
-const swing = (instance, engine, time) => {
-  const ropeHeight = engine.getVariable(constant.ropeHeight);
-  if (instance.status !== constant.swing) return;
-  const i = instance;
-  const initialAngle = engine.getVariable(constant.initialAngle);
-  i.angle = initialAngle * getSwingBlockVelocity(engine, time);
-  i.weightX = i.x + Math.sin(i.angle) * ropeHeight;
-  i.weightY = i.y + Math.cos(i.angle) * ropeHeight;
-};
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
-const checkBlockOut = (instance, engine) => {
-  if (instance.status === constant.rotateLeft) {
-    // 左转 要等右上角消失才算消失
-    if (instance.y - instance.width >= engine.height) {
-      instance.visible = false;
-      instance.status = constant.out;
-      addFailedCount(engine);
-    }
-  } else if (instance.y >= engine.height) {
-    instance.visible = false;
-    instance.status = constant.out;
-    addFailedCount(engine);
-  }
-};
-
-export const blockAction = (instance, engine, time) => {
-  const i = instance;
-  const ropeHeight = engine.getVariable(constant.ropeHeight);
-  if (!i.visible) {
-    return;
-  }
-  if (!i.ready) {
-    i.ready = true;
-    i.status = constant.swing;
-    instance.updateWidth(engine.getVariable(constant.blockWidth));
-    instance.updateHeight(engine.getVariable(constant.blockHeight));
-    instance.x = engine.width / 2;
-    instance.y = ropeHeight * -1.5;
-
-    // 블럭 생성 시 성경 정보 저장 (이 블럭이 성공하면 몇 번째 성경책이 될지)
-    const currentSuccessCount = engine.getVariable(constant.successCount);
-    const gameMode = engine.getVariable(constant.gameMode);
-    const maxBooks = engine.getVariable(constant.maxBooks);
-    // 이 블럭이 성공하면 successCount가 1 증가하므로, 그 값을 기준으로 성경 순서 결정
-    const nextSuccessCount = currentSuccessCount + 1;
-    const relativeIndex = ((nextSuccessCount - 1) % maxBooks) + 1;
-    // 모드에 따라 bookIndex 계산: 구약(1-39), 신약(40-66)
-    const bookIndex =
-      gameMode === "old" ? relativeIndex : 40 + (relativeIndex - 1);
-    instance.bibleBookIndex = bookIndex;
-    instance.bibleBookName = getBibleBookInfo(gameMode, bookIndex);
-
-    // 디버깅용 로그
-    console.log(
-      `블럭 생성: currentSuccessCount=${currentSuccessCount}, nextSuccessCount=${nextSuccessCount}, bookIndex=${bookIndex}, bookName=${instance.bibleBookName}`
-    );
-  }
-  const line = engine.getInstance("line");
-  switch (i.status) {
-    case constant.swing:
-      engine.getTimeMovement(
-        constant.hookDownMovement,
-        [[instance.y, instance.y + ropeHeight]],
-        (value) => {
-          instance.y = value;
-        },
-        {
-          name: "block",
-        }
-      );
-      swing(instance, engine, time);
-      break;
-    case constant.beforeDrop:
-      i.x = instance.weightX - instance.calWidth;
-      i.y = instance.weightY + 0.3 * instance.height; // add rope height
-      i.rotate = 0;
-      i.ay = engine.pixelsPerFrame(0.0003 * engine.height); // acceleration of gravity
-      i.startDropTime = time;
-      i.status = constant.drop;
-      break;
-    case constant.drop:
-      const deltaTime = time - i.startDropTime;
-      i.startDropTime = time;
-      i.vy += i.ay * deltaTime;
-      i.y += i.vy * deltaTime + 0.5 * i.ay * deltaTime ** 2;
-      const collision = checkCollision(instance, line);
-      const blockY = line.y - instance.height;
-      const calRotate = (ins) => {
-        ins.originOutwardAngle = Math.atan(ins.height / ins.outwardOffset);
-        ins.originHypotenuse = Math.sqrt(
-          ins.height ** 2 + ins.outwardOffset ** 2
-        );
-        engine.playAudio("rotate");
-      };
-      switch (collision) {
-        case 1:
-          checkBlockOut(instance, engine);
-          break;
-        case 2:
-          i.status = constant.rotateLeft;
-          instance.y = blockY;
-          instance.outwardOffset = line.x + instance.calWidth - instance.x;
-          calRotate(instance);
-          break;
-        case 3:
-          i.status = constant.rotateRight;
-          instance.y = blockY;
-          instance.outwardOffset =
-            line.collisionX + instance.calWidth - instance.x;
-          calRotate(instance);
-          break;
-        case 4:
-        case 5:
-          i.status = constant.land;
-          const lastSuccessCount = engine.getVariable(constant.successCount);
-          addSuccessCount(engine);
-
-          // 성공적으로 착지했을 때 성경 정보 최종 확정
-          const currentSuccessCount = engine.getVariable(constant.successCount);
-          const gameMode = engine.getVariable(constant.gameMode);
-          const maxBooks = engine.getVariable(constant.maxBooks);
-          const relativeIndex = ((currentSuccessCount - 1) % maxBooks) + 1;
-          // 모드에 따라 bookIndex 계산: 구약(1-39), 신약(40-66)
-          const finalBookIndex =
-            gameMode === "old" ? relativeIndex : 40 + (relativeIndex - 1);
-          instance.bibleBookIndex = finalBookIndex;
-          instance.bibleBookName = getBibleBookInfo(gameMode, finalBookIndex);
-
-          console.log(
-            `블럭 착지 성공: ${instance.name}, finalSuccessCount=${currentSuccessCount}, finalBookIndex=${finalBookIndex}, finalBookName=${instance.bibleBookName}`
-          );
-
-          engine.setTimeMovement(constant.moveDownMovement, 500);
-          if (lastSuccessCount === 10 || lastSuccessCount === 15) {
-            engine.setTimeMovement(constant.lightningMovement, 150);
-          }
-          instance.y = blockY;
-          line.y = blockY;
-          line.x = i.x - i.calWidth;
-          line.collisionX = line.x + i.width;
-          // 作弊检测 超出左边或右边1／3
-          const cheatWidth = i.width * 0.3;
-          if (i.x > engine.width - cheatWidth * 2 || i.x < -cheatWidth) {
-            engine.setVariable(constant.hardMode, true);
-          }
-          if (collision === 5) {
-            instance.perfect = true;
-            addScore(engine, true);
-            engine.playAudio("drop-perfect");
-          } else {
-            addScore(engine);
-            engine.playAudio("drop");
-          }
-          break;
-        default:
-          break;
-      }
-      break;
-    case constant.land:
-      engine.getTimeMovement(
-        constant.moveDownMovement,
-        [
-          [
-            instance.y,
-            instance.y +
-              getMoveDownValue(engine, { pixelsPerFrame: (s) => s / 2 }),
-          ],
-        ],
-        (value) => {
-          if (!instance.visible) return;
-          instance.y = value;
-          if (instance.y > engine.height) {
-            instance.visible = false;
-          }
-        },
-        {
-          name: instance.name,
-        }
-      );
-      instance.x += getLandBlockVelocity(engine, time);
-      break;
-    case constant.rotateLeft:
-    case constant.rotateRight:
-      const isRight = i.status === constant.rotateRight;
-      const rotateSpeed = engine.pixelsPerFrame(Math.PI * 4);
-      const isShouldFall = isRight
-        ? instance.rotate > 1.3
-        : instance.rotate < -1.3; // 75度
-      const leftFix = isRight ? 1 : -1;
-      if (isShouldFall) {
-        instance.rotate += (rotateSpeed / 8) * leftFix;
-        instance.y += engine.pixelsPerFrame(engine.height * 0.7);
-        instance.x += engine.pixelsPerFrame(engine.width * 0.3) * leftFix;
-      } else {
-        let rotateRatio =
-          (instance.calWidth - instance.outwardOffset) / instance.calWidth;
-        rotateRatio = rotateRatio > 0.5 ? rotateRatio : 0.5;
-        instance.rotate += rotateSpeed * rotateRatio * leftFix;
-        const angle = instance.originOutwardAngle + instance.rotate;
-        const rotateAxisX = isRight
-          ? line.collisionX + instance.calWidth
-          : line.x + instance.calWidth;
-        const rotateAxisY = line.y;
-        instance.x = rotateAxisX - Math.cos(angle) * instance.originHypotenuse;
-        instance.y = rotateAxisY - Math.sin(angle) * instance.originHypotenuse;
-      }
-      checkBlockOut(instance, engine);
-      break;
-    default:
-      break;
-  }
-};
-
-const drawSwingBlock = (instance, engine) => {
-  const blockX = instance.weightX - instance.calWidth;
-  const blockY = instance.weightY;
-
-  // blockRope 이미지 그리기
-  const bl = engine.getImg("blockRope");
-  engine.ctx.drawImage(
-    bl,
-    blockX,
-    blockY,
-    instance.width,
-    instance.height * 1.3
-  );
-
-  // 성경책 이름 텍스트 표시
-  const bookName = instance.bibleBookName || "창세기";
-  drawBibleText(
-    engine.ctx,
-    blockX,
-    blockY,
-    instance.width,
-    instance.height * 1.6,
-    bookName
-  );
-
-  const leftX = blockX;
-  engine.debugLineY(leftX);
-};
-
-// 성경책 정보 가져오기
-const getBibleBookInfo = (gameMode, bookIndex) => {
-  // 모드에 따라 배열 인덱스 계산: 구약(1-39 → 0-38), 신약(40-66 → 0-26)
+const getBibleBookName = (gameMode, bookIndex) => {
   const arrayIndex = gameMode === "old" ? bookIndex - 1 : bookIndex - 40;
   const book = getBibleBook(gameMode, arrayIndex);
   return book
@@ -288,103 +20,356 @@ const getBibleBookInfo = (gameMode, bookIndex) => {
     : `${gameMode === "old" ? "구약" : "신약"} ${bookIndex}`;
 };
 
-// 성경책 이름 텍스트 그리기 공통 함수
-const drawBibleText = (ctx, x, y, width, height, bookName) => {
-  ctx.save();
-  ctx.fillStyle = "#FFFFFF";
-  ctx.strokeStyle = "#000000";
-  ctx.lineWidth = width * 0.04;
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
+const checkCollision = (inst, line) => {
+  // 0 goon  1 drop  2 rotate-left  3 rotate-right  4 ok  5 perfect
+  if (inst.y + inst.height < line.y) return 0;
+  if (inst.x < line.x - inst.calWidth || inst.x > line.collisionX + inst.calWidth) return 1;
+  if (inst.x < line.x)          return 2;
+  if (inst.x > line.collisionX) return 3;
+  if (inst.x > line.x + inst.calWidth * 0.8 && inst.x < line.x + inst.calWidth * 1.2) return 5;
+  return 4;
+};
 
-  // 텍스트가 블록 폭을 넘지 않도록 폰트 크기 자동 조정
-  const maxTextWidth = width * 0.9; // 블록 폭의 90%를 사용 가능한 텍스트 영역으로 설정
-  const minFontSize = 15;
-  let fontSize = Math.max(minFontSize, width * 0.22); // 초기 폰트 크기
+// ── Factory ───────────────────────────────────────────────────────────────────
 
-  // 텍스트 너비를 측정하고 폰트 크기 조정
-  ctx.font = `${fontSize}px Arial`;
-  let textWidth = ctx.measureText(bookName).width;
+/**
+ * createBlock — PixiJS block instance factory.
+ * Each block is one game object with a sprite + bible text label.
+ */
+export function createBlock(engine, blockNumber) {
+  // Sprites
+  const blockSprite = new PIXI.Sprite();
+  const ropeSprite  = new PIXI.Sprite();
 
-  // 텍스트가 블록 폭을 넘으면 폰트 크기를 줄이며 반복
-  while (textWidth > maxTextWidth && fontSize > minFontSize) {
-    fontSize -= 1;
-    ctx.font = `${fontSize}px Arial`;
-    textWidth = ctx.measureText(bookName).width;
+  // Bible text label (outline + fill achieved via separate Text objects)
+  const labelStyle = {
+    fontFamily: "Arial",
+    fontSize: 24,
+    fontWeight: "bold",
+    fill: "#FFFFFF",
+    stroke: { color: "#000000", width: 3 },
+    align: "center",
+  };
+  const label = new PIXI.Text({ text: "", style: labelStyle });
+  label.anchor.set(0.5, 0.5);
+
+  const container = new PIXI.Container();
+  container.addChild(ropeSprite, blockSprite, label);
+
+  // ── Internal state ─────────────────────────────────────────────────────────
+  let ready  = false;
+  let width  = 0;
+  let height = 0;
+  let calWidth = 0;   // half-width used in collision detection
+
+  const phys = {
+    x: 0, y: 0,
+    angle: 0, weightX: 0, weightY: 0,
+    rotate: 0,
+    vx: 0, vy: 0, ay: 0,
+    startDropTime: null,
+    outwardOffset: 0,
+    originOutwardAngle: 0,
+    originHypotenuse: 0,
+  };
+
+  const inst = {
+    name: `block_${blockNumber}`,
+    container,
+    visible: true,
+    layer: "blocks",
+
+    // Collision-detection surface (read by line.js / animateFuncs.js)
+    get x()      { return phys.x; },
+    set x(v)     { phys.x = v; },
+    get y()      { return phys.y; },
+    set y(v)     { phys.y = v; },
+    get width()  { return width; },
+    get height() { return height; },
+    get calWidth() { return calWidth; },
+
+    status: constant.swing,
+    perfect: false,
+    bibleBookName: "",
+    bibleBookIndex: 0,
+
+    tickFn: (_deltaMS, now) => {
+      const ropeHeight = engine.getVariable(constant.ropeHeight);
+
+      if (!ready) {
+        ready  = true;
+        width  = engine.getVariable(constant.blockWidth);
+        height = engine.getVariable(constant.blockHeight);
+        calWidth = width / 2;
+
+        phys.x = engine.width / 2;
+        phys.y = ropeHeight * -1.5;
+
+        blockSprite.texture = engine.getTexture("block");
+        ropeSprite.texture  = engine.getTexture("blockRope");
+
+        // Assign bible book
+        const currentSuccess = engine.getVariable(constant.successCount);
+        const gameMode       = engine.getVariable(constant.gameMode);
+        const maxBooks       = engine.getVariable(constant.maxBooks);
+        const nextSuccess    = currentSuccess + 1;
+        const relIndex       = ((nextSuccess - 1) % maxBooks) + 1;
+        const bookIndex      = gameMode === "old" ? relIndex : 40 + (relIndex - 1);
+        inst.bibleBookIndex  = bookIndex;
+        inst.bibleBookName   = getBibleBookName(gameMode, bookIndex);
+
+        console.log(
+          `블럭 생성: block_${blockNumber}, bookIndex=${bookIndex}, name=${inst.bibleBookName}`
+        );
+      }
+
+      if (!inst.visible) return;
+
+      const line = engine.getInstance("line");
+      if (!line) return;
+
+      switch (inst.status) {
+        case constant.swing: {
+          engine.getTimeMovement(
+            constant.hookDownMovement,
+            [[phys.y, phys.y + ropeHeight]],
+            (value) => { phys.y = value; },
+            { name: inst.name }
+          );
+          const initialAngle = engine.getVariable(constant.initialAngle);
+          phys.angle   = initialAngle * getSwingBlockVelocity(engine, now);
+          phys.weightX = phys.x + Math.sin(phys.angle) * ropeHeight;
+          phys.weightY = phys.y + Math.cos(phys.angle) * ropeHeight;
+          _renderSwing(ropeHeight);
+          break;
+        }
+
+        case constant.beforeDrop: {
+          phys.x    = phys.weightX - calWidth;
+          phys.y    = phys.weightY + 0.3 * height;
+          phys.rotate = 0;
+          phys.ay   = engine.pixelsPerFrame(0.0003 * engine.height);
+          phys.startDropTime = now;
+          phys.vy   = 0;
+          inst.status = constant.drop;
+          // fall-through to drop on next frame
+          _renderBlock();
+          break;
+        }
+
+        case constant.drop: {
+          const dt = now - phys.startDropTime;
+          phys.startDropTime = now;
+          phys.vy += phys.ay * dt;
+          phys.y  += phys.vy * dt + 0.5 * phys.ay * dt ** 2;
+
+          const collision = checkCollision(inst, line);
+          const blockY    = line.y - height;
+
+          if (collision === 1) {
+            _checkOut();
+          } else if (collision === 2 || collision === 3) {
+            inst.status = collision === 2 ? constant.rotateLeft : constant.rotateRight;
+            phys.y     = blockY;
+            phys.outwardOffset = collision === 2
+              ? line.x          + calWidth - phys.x
+              : line.collisionX + calWidth - phys.x;
+            phys.originOutwardAngle  = Math.atan(height / phys.outwardOffset);
+            phys.originHypotenuse    = Math.sqrt(height ** 2 + phys.outwardOffset ** 2);
+            engine.playAudio("rotate");
+            _renderBlock();
+          } else if (collision === 4 || collision === 5) {
+            inst.status = constant.land;
+
+            addSuccessCount(engine);
+            const currentSuccess = engine.getVariable(constant.successCount);
+            const gameMode       = engine.getVariable(constant.gameMode);
+            const maxBooks       = engine.getVariable(constant.maxBooks);
+            const relIndex       = ((currentSuccess - 1) % maxBooks) + 1;
+            const finalBookIndex = gameMode === "old" ? relIndex : 40 + (relIndex - 1);
+            inst.bibleBookIndex  = finalBookIndex;
+            inst.bibleBookName   = getBibleBookName(gameMode, finalBookIndex);
+
+            console.log(
+              `블럭 착지: ${inst.name}, successCount=${currentSuccess}, bookIndex=${finalBookIndex}`
+            );
+
+            engine.setTimeMovement(constant.moveDownMovement, 500);
+            const lastSuccess = currentSuccess - 1;
+            if (lastSuccess === 10 || lastSuccess === 15) {
+              engine.setTimeMovement(constant.lightningMovement, 150);
+            }
+
+            phys.y             = blockY;
+            line.y             = blockY;
+            line.x             = phys.x - calWidth;
+            line.collisionX    = line.x + width;
+
+            const cheatWidth = width * 0.3;
+            if (phys.x > engine.width - cheatWidth * 2 || phys.x < -cheatWidth) {
+              engine.setVariable(constant.hardMode, true);
+            }
+
+            if (collision === 5) {
+              inst.perfect = true;
+              addScore(engine, true);
+              engine.playAudio("drop-perfect");
+            } else {
+              addScore(engine);
+              engine.playAudio("drop");
+            }
+
+            _renderBlock();
+          } else {
+            _renderBlock();
+          }
+          break;
+        }
+
+        case constant.land: {
+          engine.getTimeMovement(
+            constant.moveDownMovement,
+            [[phys.y, phys.y + getMoveDownValue(engine, { pixelsPerFrame: s => s / 2 })]],
+            (value) => {
+              if (!inst.visible) return;
+              phys.y = value;
+              if (phys.y > engine.height) inst.visible = false;
+            },
+            { name: inst.name }
+          );
+          phys.x += getLandBlockVelocity(engine, now);
+          _renderBlock();
+          break;
+        }
+
+        case constant.rotateLeft:
+        case constant.rotateRight: {
+          const isRight      = inst.status === constant.rotateRight;
+          const rotateSpeed  = engine.pixelsPerFrame(Math.PI * 4);
+          const sign         = isRight ? 1 : -1;
+          const isShouldFall = isRight ? phys.rotate > 1.3 : phys.rotate < -1.3;
+
+          if (isShouldFall) {
+            phys.rotate += (rotateSpeed / 8) * sign;
+            phys.y      += engine.pixelsPerFrame(engine.height * 0.7);
+            phys.x      += engine.pixelsPerFrame(engine.width  * 0.3) * sign;
+          } else {
+            let ratio = (calWidth - phys.outwardOffset) / calWidth;
+            ratio = ratio > 0.5 ? ratio : 0.5;
+            phys.rotate += rotateSpeed * ratio * sign;
+
+            const angle      = phys.originOutwardAngle + phys.rotate;
+            const axisX      = isRight
+              ? line.collisionX + calWidth
+              : line.x + calWidth;
+            phys.x = axisX - Math.cos(angle) * phys.originHypotenuse;
+            phys.y = line.y - Math.sin(angle) * phys.originHypotenuse;
+          }
+          _checkOut();
+          _renderRotated();
+          break;
+        }
+
+        default:
+          break;
+      }
+
+      container.visible = inst.visible;
+    },
+  };
+
+  // ── Render helpers ──────────────────────────────────────────────────────────
+
+  function _setLabel(x, y, w, h) {
+    const bookName   = inst.bibleBookName || "창세기";
+    const maxW       = w * 0.9;
+    const minFontSz  = 15;
+    let fontSize     = Math.max(minFontSz, w * 0.22);
+
+    // Binary-search-like font shrink (canvas measureText not available in PixiJS directly)
+    // Use PIXI.Text measurement instead
+    label.style.fontSize = fontSize;
+    label.text           = bookName;
+    while (label.width > maxW && fontSize > minFontSz) {
+      fontSize -= 1;
+      label.style.fontSize = fontSize;
+    }
+
+    label.style.stroke = { color: "#000000", width: w * 0.04 };
+    label.x = x + w / 2;
+    label.y = y + h / 2;
   }
 
-  const textX = x + width / 2;
-  const textY = y + height / 2;
+  function _renderSwing(ropeHeight) {
+    const bx = phys.weightX - calWidth;
+    const by = phys.weightY;
 
-  // 텍스트 외곽선
-  ctx.strokeText(bookName, textX, textY);
-  // 텍스트 채우기
-  ctx.fillText(bookName, textX, textY);
-  ctx.restore();
-};
+    ropeSprite.texture = engine.getTexture("blockRope");
+    ropeSprite.x       = bx;
+    ropeSprite.y       = by;
+    ropeSprite.width   = width;
+    ropeSprite.height  = height * 1.3;
+    ropeSprite.visible = true;
 
-const drawBlock = (instance, engine) => {
-  const { perfect } = instance;
+    blockSprite.visible = false;
+    container.rotation  = 0;
+    container.x         = 0;
+    container.y         = 0;
 
-  // 블럭 생성 시 저장된 성경 정보 사용
-  const bookName = instance.bibleBookName || "창세기";
-
-  // 기본 블록 이미지 사용
-  const bl = engine.getImg(perfect ? "block-perfect" : "block");
-  engine.ctx.drawImage(
-    bl,
-    instance.x,
-    instance.y,
-    instance.width,
-    instance.height
-  );
-
-  // 완벽한 착지 시 효과 추가
-  if (perfect) {
-    const { ctx } = engine;
-    ctx.save();
-    ctx.globalAlpha = 0.7;
-    ctx.fillStyle = "#FFD700"; // 금색 효과
-    ctx.fillRect(instance.x, instance.y, instance.width, instance.height);
-    ctx.restore();
+    _setLabel(bx, by, width, height * 1.6);
   }
 
-  // 성경책 이름 표시
-  drawBibleText(
-    engine.ctx,
-    instance.x,
-    instance.y,
-    instance.width,
-    instance.height,
-    bookName
-  );
-};
+  function _renderBlock() {
+    ropeSprite.visible = false;
 
-const drawRotatedBlock = (instance, engine) => {
-  const { ctx } = engine;
-  ctx.save();
-  ctx.translate(instance.x, instance.y);
-  ctx.rotate(instance.rotate);
-  ctx.translate(-instance.x, -instance.y);
-  drawBlock(instance, engine);
-  ctx.restore();
-};
+    const tex = engine.getTexture(inst.perfect ? "block-perfect" : "block");
+    blockSprite.texture = tex;
+    blockSprite.x       = phys.x;
+    blockSprite.y       = phys.y;
+    blockSprite.width   = width;
+    blockSprite.height  = height;
+    blockSprite.alpha   = 1;
+    blockSprite.visible = true;
 
-export const blockPainter = (instance, engine) => {
-  const { status } = instance;
-  switch (status) {
-    case constant.swing:
-      drawSwingBlock(instance, engine);
-      break;
-    case constant.drop:
-    case constant.land:
-      drawBlock(instance, engine);
-      break;
-    case constant.rotateLeft:
-    case constant.rotateRight:
-      drawRotatedBlock(instance, engine);
-      break;
-    default:
-      break;
+    container.rotation  = 0;
+    container.x         = 0;
+    container.y         = 0;
+
+    _setLabel(phys.x, phys.y, width, height);
   }
-};
+
+  function _renderRotated() {
+    ropeSprite.visible = false;
+
+    const tex = engine.getTexture(inst.perfect ? "block-perfect" : "block");
+    blockSprite.texture = tex;
+    blockSprite.width   = width;
+    blockSprite.height  = height;
+    blockSprite.visible = true;
+
+    // Rotate around phys.x, phys.y
+    container.x        = phys.x;
+    container.y        = phys.y;
+    container.rotation = phys.rotate;
+    blockSprite.x      = 0;
+    blockSprite.y      = 0;
+
+    _setLabel(0, 0, width, height);
+  }
+
+  function _checkOut() {
+    if (inst.status === constant.rotateLeft) {
+      if (phys.y - width >= engine.height) {
+        inst.visible = false;
+        inst.status  = constant.out;
+        addFailedCount(engine);
+      }
+    } else if (phys.y >= engine.height) {
+      inst.visible = false;
+      inst.status  = constant.out;
+      addFailedCount(engine);
+    }
+  }
+
+  return inst;
+}

@@ -1,3 +1,4 @@
+import * as PIXI from "pixi.js";
 import * as constant from "./constant";
 
 export const checkMoveDown = (engine) =>
@@ -19,19 +20,12 @@ export const getAngleBase = (engine) => {
   const successCount = engine.getVariable(constant.successCount);
   const gameScore = engine.getVariable(constant.gameScore);
   const { hookAngle } = engine.getVariable(constant.gameUserOption);
-  if (hookAngle) {
-    return hookAngle(successCount, gameScore);
-  }
-  if (engine.getVariable(constant.hardMode)) {
-    return 90;
-  }
+  if (hookAngle) return hookAngle(successCount, gameScore);
+  if (engine.getVariable(constant.hardMode)) return 90;
   switch (true) {
-    case successCount < 10:
-      return 30;
-    case successCount < 20:
-      return 60;
-    default:
-      return 80;
+    case successCount < 10: return 30;
+    case successCount < 20: return 60;
+    default:                return 80;
   }
 };
 
@@ -39,30 +33,16 @@ export const getSwingBlockVelocity = (engine, time) => {
   const successCount = engine.getVariable(constant.successCount);
   const gameScore = engine.getVariable(constant.gameScore);
   const { hookSpeed } = engine.getVariable(constant.gameUserOption);
-  if (hookSpeed) {
-    return hookSpeed(successCount, gameScore);
-  }
+  if (hookSpeed) return hookSpeed(successCount, gameScore);
   let hard;
   switch (true) {
-    case successCount < 1:
-      hard = 0;
-      break;
-    case successCount < 10:
-      hard = 1;
-      break;
-    case successCount < 20:
-      hard = 0.8;
-      break;
-    case successCount < 30:
-      hard = 0.7;
-      break;
-    default:
-      hard = 0.74;
-      break;
+    case successCount < 1:  hard = 0;    break;
+    case successCount < 10: hard = 1;    break;
+    case successCount < 20: hard = 0.8;  break;
+    case successCount < 30: hard = 0.7;  break;
+    default:                hard = 0.74; break;
   }
-  if (engine.getVariable(constant.hardMode)) {
-    hard = 1.1;
-  }
+  if (engine.getVariable(constant.hardMode)) hard = 1.1;
   return Math.sin(time / (200 / hard));
 };
 
@@ -70,46 +50,27 @@ export const getLandBlockVelocity = (engine, time) => {
   const successCount = engine.getVariable(constant.successCount);
   const gameScore = engine.getVariable(constant.gameScore);
   const { landBlockSpeed } = engine.getVariable(constant.gameUserOption);
-  if (landBlockSpeed) {
-    return landBlockSpeed(successCount, gameScore);
-  }
+  if (landBlockSpeed) return landBlockSpeed(successCount, gameScore);
   const { width } = engine;
   let hard;
   switch (true) {
-    case successCount < 5:
-      hard = 0;
-      break;
-    case successCount < 13:
-      hard = 0.001;
-      break;
-    case successCount < 23:
-      hard = 0.002;
-      break;
-    default:
-      hard = 0.003;
-      break;
+    case successCount < 5:  hard = 0;     break;
+    case successCount < 13: hard = 0.001; break;
+    case successCount < 23: hard = 0.002; break;
+    default:                hard = 0.003; break;
   }
   return Math.cos(time / 200) * hard * width;
 };
 
 export const getHookStatus = (engine) => {
-  if (engine.checkTimeMovement(constant.hookDownMovement)) {
-    return constant.hookDown;
-  }
-  if (engine.checkTimeMovement(constant.hookUpMovement)) {
-    return constant.hookUp;
-  }
+  if (engine.checkTimeMovement(constant.hookDownMovement)) return constant.hookDown;
+  if (engine.checkTimeMovement(constant.hookUpMovement))   return constant.hookUp;
   return constant.hookNormal;
 };
 
 export const touchEventHandler = (engine) => {
   if (!engine.getVariable(constant.gameStartNow)) return;
-  if (engine.debug && engine.paused) {
-    return;
-  }
-  if (getHookStatus(engine) !== constant.hookNormal) {
-    return;
-  }
+  if (getHookStatus(engine) !== constant.hookNormal) return;
   engine.removeInstance("tutorial");
   engine.removeInstance("tutorial-arrow");
   const b = engine.getInstance(
@@ -146,9 +107,7 @@ export const addFailedCount = (engine) => {
     engine.pauseAudio("bgm");
     engine.playAudio("game-over");
     if (window.BibleDailySDK) {
-      window.BibleDailySDK.onGameFinished(
-        engine.getVariable(constant.gameScore)
-      );
+      window.BibleDailySDK.onGameFinished(engine.getVariable(constant.gameScore));
     }
     engine.setVariable(constant.gameStartNow, false);
   }
@@ -159,7 +118,7 @@ export const addScore = (engine, isPerfect) => {
     constant.gameUserOption
   );
   const lastPerfectCount = engine.getVariable(constant.perfectCount, 0);
-  const lastGameScore = engine.getVariable(constant.gameScore);
+  const lastGameScore    = engine.getVariable(constant.gameScore);
   const perfect = isPerfect ? lastPerfectCount + 1 : 0;
   const score =
     lastGameScore + (successScore || 25) + (perfectScore || 25) * perfect;
@@ -168,30 +127,22 @@ export const addScore = (engine, isPerfect) => {
   if (setGameScore) setGameScore(score);
 };
 
-export const drawYellowString = (engine, option) => {
-  const {
-    string,
-    size,
-    x,
-    y,
-    textAlign,
-    fontName = "wenxue",
-    fontWeight = "normal",
-  } = option;
-  const { ctx } = engine;
-  const fontSize = size;
-  const lineSize = fontSize * 0.1;
-  ctx.save();
-  ctx.beginPath();
-  const gradient = ctx.createLinearGradient(0, 0, 0, y);
-  gradient.addColorStop(0, "#FAD961");
-  gradient.addColorStop(1, "#F76B1C");
-  ctx.fillStyle = gradient;
-  ctx.lineWidth = lineSize;
-  ctx.strokeStyle = "#FFF";
-  ctx.textAlign = textAlign || "center";
-  ctx.font = `${fontWeight} ${fontSize}px ${fontName}`;
-  ctx.strokeText(string, x, y);
-  ctx.fillText(string, x, y);
-  ctx.restore();
+/**
+ * drawYellowString — PixiJS replacement.
+ * Returns a PIXI.Text object styled with the yellow gradient look.
+ * Callers should addChild() it themselves, or use updateText() to update existing nodes.
+ */
+export const makeYellowText = (string, size, { fontName = "Arial", fontWeight = "bold" } = {}) => {
+  const text = new PIXI.Text({
+    text: String(string),
+    style: {
+      fontFamily: fontName === "wenxue" ? "wenxue, Arial" : fontName,
+      fontWeight,
+      fontSize: size,
+      fill: { type: "linear", stops: [{ offset: 0, color: "#FAD961" }, { offset: 1, color: "#F76B1C" }] },
+      stroke: { color: "#FFFFFF", width: size * 0.1 },
+      align: "center",
+    },
+  });
+  return text;
 };
