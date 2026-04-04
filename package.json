@@ -36,6 +36,7 @@
     "webpack-dev-server": "^4.15.1"
   },
   "dependencies": {
-    "cooljs": "^1.0.2"
+    "howler": "^2.2.4",
+    "pixi.js": "^8.17.1"
   }
 }
