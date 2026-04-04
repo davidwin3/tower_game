@@ -132,9 +132,15 @@ window.TowerGame = async (opt = {}) => {
     eng.setVariable(constant.gameStartNow, true);
 
     // Touch / click handler
-    eng.app.canvas.addEventListener("pointerdown", () => {
-      touchEventHandler(eng);
-    });
+    // document 레벨로 등록: .content div가 position:relative로 캔버스 위에 쌓여
+    // canvas의 pointerdown을 차단하기 때문에 document에서 감지해야 함
+    const onInput = () => touchEventHandler(eng);
+    document.addEventListener("pointerdown", onInput);
+    document.addEventListener("touchstart", onInput, { passive: true });
+    eng._removeInputListeners = () => {
+      document.removeEventListener("pointerdown", onInput);
+      document.removeEventListener("touchstart", onInput);
+    };
   };
 
   eng.addKeyDownListener("enter", () => {
@@ -246,6 +252,7 @@ $(".js-reload").on("click", function () {
   $("#over-zero").hide();
 
   if (engine) {
+    if (engine._removeInputListeners) engine._removeInputListeners();
     engine.pauseBgm();
     engine.resetState();
     resetHud();
@@ -268,6 +275,7 @@ $(".js-mode-select").on("click", function () {
   successCount = 0;
 
   if (engine) {
+    if (engine._removeInputListeners) engine._removeInputListeners();
     engine.pauseBgm();
     engine.resetState();
     resetHud();
