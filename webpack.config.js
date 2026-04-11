@@ -3,6 +3,7 @@ const HtmlWebpackPlugin = require("html-webpack-plugin");
 const MiniCssExtractPlugin = require("mini-css-extract-plugin");
 const CssMinimizerPlugin = require("css-minimizer-webpack-plugin");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
+const TerserPlugin = require("terser-webpack-plugin");
 
 module.exports = (env, argv) => {
   const isProduction = argv.mode === "production";
@@ -74,7 +75,40 @@ module.exports = (env, argv) => {
       }),
     ],
     optimization: {
-      minimizer: [...(isProduction ? [new CssMinimizerPlugin()] : [])],
+      usedExports: true,
+      sideEffects: true,
+      minimizer: [
+        ...(isProduction
+          ? [
+              new TerserPlugin({
+                terserOptions: {
+                  compress: { passes: 2, drop_console: false },
+                  mangle: true,
+                  format: { comments: false },
+                },
+                extractComments: false,
+              }),
+              new CssMinimizerPlugin(),
+            ]
+          : []),
+      ],
+      splitChunks: {
+        chunks: "all",
+        cacheGroups: {
+          pixi: {
+            test: /[\\/]node_modules[\\/]pixi\.js/,
+            name: "pixi",
+            chunks: "all",
+            priority: 20,
+          },
+          vendors: {
+            test: /[\\/]node_modules[\\/]/,
+            name: "vendors",
+            chunks: "all",
+            priority: 10,
+          },
+        },
+      },
     },
     devServer: {
       static: [
