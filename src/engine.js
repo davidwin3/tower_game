@@ -95,7 +95,11 @@ export async function createEngine({ canvasId, width, height, soundOn = true }) 
     addAudio: (alias, src) => {
       if (!soundOn) return;
       const oggSrc = src.replace(/\.mp3$/, ".ogg");
-      sounds[alias] = new Howl({ src: [src, oggSrc], preload: false });
+      const isBgm = alias === "bgm";
+      sounds[alias] = new Howl({
+        src: [src, oggSrc],
+        html5: isBgm,   // BGM은 HTML5 Audio로 재생 (모바일 호환성)
+      });
     },
     playAudio: (alias, loop = false) => {
       if (!soundOn) return;
