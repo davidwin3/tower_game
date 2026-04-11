@@ -91,3 +91,8 @@ export const getTween = (key, now, ranges, onValue, options = {}) => {
 
 /** Remove a tween entirely. */
 export const removeTween = (key) => { delete tweens[key]; };
+
+/** Clear every tween — used on game restart. */
+export const resetTweens = () => {
+  Object.keys(tweens).forEach(k => delete tweens[k]);
+};

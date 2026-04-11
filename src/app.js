@@ -77,18 +77,23 @@ window.TowerGame = async (opt = {}) => {
   eng.addAudio("bgm",          pathGen("bgm.mp3"));
 
   // ── Initial state variables ───────────────────────────────────────────────
-  eng.setVariable(constant.blockWidth,  width  * 0.25);
-  eng.setVariable(constant.blockHeight, width  * 0.25 * 0.71);
-  eng.setVariable(constant.cloudSize,   width  * 0.3);
-  eng.setVariable(constant.ropeHeight,  height * 0.4);
-  eng.setVariable(constant.blockCount,  0);
-  eng.setVariable(constant.successCount, 0);
-  eng.setVariable(constant.failedCount,  0);
-  eng.setVariable(constant.gameScore,    0);
-  eng.setVariable(constant.hardMode,     false);
-  eng.setVariable(constant.gameUserOption, opt);
-  eng.setVariable(constant.gameMode,    gameMode);
-  eng.setVariable(constant.maxBooks,    maxBooks);
+  // Extracted so restart can re-apply them after engine.reset() clears state.
+  eng._initState = () => {
+    eng.setVariable(constant.blockWidth,  width  * 0.25);
+    eng.setVariable(constant.blockHeight, width  * 0.25 * 0.71);
+    eng.setVariable(constant.cloudSize,   width  * 0.3);
+    eng.setVariable(constant.ropeHeight,  height * 0.4);
+    eng.setVariable(constant.blockCount,  0);
+    eng.setVariable(constant.successCount, 0);
+    eng.setVariable(constant.failedCount,  0);
+    eng.setVariable(constant.gameScore,    0);
+    eng.setVariable(constant.hardMode,     false);
+    eng.setVariable(constant.gameUserOption, opt);
+    eng.setVariable(constant.gameMode,    gameMode);
+    eng.setVariable(constant.maxBooks,    maxBooks);
+    eng.setVariable(constant.gameStartNow, false);
+  };
+  eng._initState();
 
   // ── Game-loop callbacks (called from ticker) ──────────────────────────────
   eng.app.ticker.add(() => {
@@ -143,6 +148,18 @@ window.TowerGame = async (opt = {}) => {
 };
 
 // ── DOM helpers ────────────────────────────────────────────────────────────────
+// Swap the canvas element with a fresh clone. Required before creating a new
+// PIXI.Application on mode change — reusing a canvas whose WebGL context has
+// been torn down produces flicker and hangs on init.
+function replaceCanvasElement() {
+  const old = document.getElementById("canvas");
+  if (!old || !old.parentNode) return;
+  const fresh = document.createElement("canvas");
+  fresh.id = "canvas";
+  fresh.className = old.className;
+  old.parentNode.replaceChild(fresh, old);
+}
+
 function updateLoading(status) {
   const { success, total, failed } = status;
   if (failed > 0 && !loadError) {
@@ -239,20 +256,27 @@ $(".js-reload").on("click", function () {
   gameStart    = false;
   score        = 0;
   successCount = 0;
-  isRestarting = true;
   $("#modal").hide();
   $("#over-modal").hide();
   $("#over-zero").hide();
 
-  if (engine) {
-    if (engine._removeInputListeners) engine._removeInputListeners();
-    engine.pauseBgm();
-    engine.resetState();
-    resetHud();
-    engine = null;
+  if (!engine) {
+    isRestarting = true;
+    loadError    = false;
+    gameReady();
+    return;
   }
-  loadError = false;
-  gameReady();
+
+  // In-place restart — reuse the existing PIXI.Application. Destroying and
+  // recreating the Pixi app on the same canvas is brittle (stale WebGL
+  // context, dangling tickers), so we clear state instead.
+  engine.reset();
+  resetHud();
+  engine._initState();
+  engine._addPreGameInstances();
+  gameStart = true;
+  engine.playBgm();
+  setTimeout(engine.start, 400);
 });
 
 $(".js-invite").on("click", function () { $(".wxShare").show(); });
@@ -268,10 +292,9 @@ $(".js-mode-select").on("click", function () {
   successCount = 0;
 
   if (engine) {
-    if (engine._removeInputListeners) engine._removeInputListeners();
-    engine.pauseBgm();
-    engine.resetState();
+    engine.destroy();
     resetHud();
+    replaceCanvasElement();
     engine = null;
   }
 

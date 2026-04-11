@@ -1,7 +1,7 @@
 import * as PIXI from "pixi.js";
 import { Howl } from "howler";
 import { setState, getState, resetState } from "./state";
-import { setTween, checkTween, getTween } from "./tween";
+import { setTween, checkTween, getTween, resetTweens } from "./tween";
 
 /**
  * createEngine — PixiJS-based drop-in replacement for cooljs Engine.
@@ -186,6 +186,64 @@ export async function createEngine({ canvasId, width, height, soundOn = true }) 
     },
 
     init: () => {},  // no-op; ticker starts automatically
+
+    // ── Reset for restart ───────────────────────────────────────────────────
+    // Clears all game state in-place so the same engine/Pixi app can be
+    // reused for a new game. Avoids tearing down the PIXI.Application (which
+    // is brittle on canvas reuse) while guaranteeing no stale instances,
+    // tweens, tickers, HUD nodes, or input listeners leak into the next run.
+    reset: () => {
+      if (engine._removeInputListeners) {
+        engine._removeInputListeners();
+        engine._removeInputListeners = null;
+      }
+      Object.keys(sounds).forEach((alias) => {
+        try { sounds[alias].stop(); } catch (e) { /* noop */ }
+      });
+      Object.values(instances).forEach((inst) => {
+        if (inst._pixiTickerFn) {
+          try { app.ticker.remove(inst._pixiTickerFn); } catch (e) { /* noop */ }
+        }
+      });
+      Object.keys(instances).forEach((k) => delete instances[k]);
+      Object.values(layers).forEach((layer) => {
+        const kids = layer.removeChildren();
+        kids.forEach((c) => {
+          if (c && !c.destroyed) {
+            try { c.destroy({ children: true }); } catch (e) { /* noop */ }
+          }
+        });
+      });
+      resetState();
+      resetTweens();
+      _now = 0;
+    },
+
+    // ── Full teardown ───────────────────────────────────────────────────────
+    // Use when switching game modes: the next run needs a brand-new engine
+    // (different image set), so we stop the ticker and tear down the Pixi app.
+    // Caller is responsible for replacing the <canvas> element afterwards —
+    // reusing the same canvas with a destroyed WebGL context is unreliable.
+    destroy: () => {
+      if (engine._removeInputListeners) {
+        engine._removeInputListeners();
+        engine._removeInputListeners = null;
+      }
+      Object.keys(sounds).forEach((alias) => {
+        try { sounds[alias].stop(); sounds[alias].unload(); } catch (e) { /* noop */ }
+      });
+      // Clear our registry without destroying containers — app.destroy will
+      // walk the scene graph itself and double-destroying causes crashes.
+      Object.keys(instances).forEach((k) => delete instances[k]);
+      resetState();
+      resetTweens();
+      if (app && !app.destroyed) {
+        try { app.ticker.stop(); } catch (e) { /* noop */ }
+        try {
+          app.destroy({ removeView: false }, { children: true });
+        } catch (e) { /* noop */ }
+      }
+    },
   };
 
   return engine;
