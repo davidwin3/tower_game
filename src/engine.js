@@ -1,4 +1,4 @@
-import * as PIXI from "pixi.js";
+import { Application, Container, Texture } from "pixi.js";
 import { Howl } from "howler";
 import { setState, getState, resetState } from "./state";
 import { setTween, checkTween, getTween, resetTweens } from "./tween";
@@ -11,7 +11,7 @@ import { setTween, checkTween, getTween, resetTweens } from "./tween";
 export async function createEngine({ canvasId, width, height, soundOn = true }) {
 
   // ── PixiJS Application ──────────────────────────────────────────────────
-  const app = new PIXI.Application();
+  const app = new Application();
   await app.init({
     canvas: document.getElementById(canvasId),
     width,
@@ -23,14 +23,14 @@ export async function createEngine({ canvasId, width, height, soundOn = true }) 
 
   // ── Rendering layers (back → front) ─────────────────────────────────────
   const layers = {
-    bg:      new PIXI.Container(),
-    clouds:  new PIXI.Container(),
-    flight:  new PIXI.Container(),   // constant.flightLayer
-    blocks:  new PIXI.Container(),
-    hook:    new PIXI.Container(),
-    line:    new PIXI.Container(),
-    hud:     new PIXI.Container(),
-    overlay: new PIXI.Container(),   // tutorial / effects
+    bg:      new Container(),
+    clouds:  new Container(),
+    flight:  new Container(),   // constant.flightLayer
+    blocks:  new Container(),
+    hook:    new Container(),
+    line:    new Container(),
+    hud:     new Container(),
+    overlay: new Container(),   // tutorial / effects
   };
   Object.values(layers).forEach(l => app.stage.addChild(l));
 
@@ -85,11 +85,11 @@ export async function createEngine({ canvasId, width, height, soundOn = true }) 
     addImg: (alias, src) => imgQueue.push({ alias, src }),
 
     /** Returns the loaded PIXI.Texture for alias. */
-    getTexture: (alias) => textures[alias] || PIXI.Texture.EMPTY,
+    getTexture: (alias) => textures[alias] || Texture.EMPTY,
 
     // Legacy compat: modules call engine.getImg(); return the texture so
     // callers can use it as a Sprite source.
-    getImg: (alias) => textures[alias] || PIXI.Texture.EMPTY,
+    getImg: (alias) => textures[alias] || Texture.EMPTY,
 
     // ── Audio ───────────────────────────────────────────────────────────────
     addAudio: (alias, src) => {
@@ -172,16 +172,24 @@ export async function createEngine({ canvasId, width, height, soundOn = true }) 
 
       let loaded = 0;
       const promises = imgQueue.map(({ alias, src }) =>
-        PIXI.Assets.load(src)
-          .then((tex) => {
-            textures[alias] = tex;
+        new Promise((resolve) => {
+          const img = new Image();
+          const done = (failed) => {
             loaded += 1;
-            if (onProgress) onProgress({ success: loaded, total, failed: 0 });
-          })
-          .catch(() => {
-            loaded += 1;
-            if (onProgress) onProgress({ success: loaded, total, failed: 1 });
-          })
+            if (onProgress) onProgress({ success: loaded, total, failed: failed ? 1 : 0 });
+            resolve();
+          };
+          img.onload = () => {
+            try {
+              textures[alias] = Texture.from(img);
+              done(false);
+            } catch (e) {
+              done(true);
+            }
+          };
+          img.onerror = () => done(true);
+          img.src = src;
+        })
       );
 
       Promise.all(promises).then(() => {
