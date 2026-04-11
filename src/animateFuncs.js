@@ -15,22 +15,23 @@ function initHud(engine) {
   const w = engine.width;
   const hud = engine.layers.hud;
 
-  // "floor" label
+  // "fl" label (small, above the number)
   floorLabel = new PIXI.Text({
-    text: "floor",
-    style: { fontFamily: "Arial", fontWeight: "bold", fontSize: w * 0.06, fill: "#FAD961", stroke: { color: "#FFF", width: w * 0.006 } },
+    text: "fl",
+    style: { fontFamily: "Arial", fontWeight: "bold", fontSize: w * 0.055, fill: "#FAD961", stroke: { color: "#FFF", width: w * 0.005 } },
   });
-  floorLabel.x = w * 0.04;
-  floorLabel.y = w * 0.06;
+  floorLabel.anchor.set(0, 0);
+  floorLabel.x = w * 0.03;
+  floorLabel.y = w * 0.01;
 
-  // Floor number (larger, wenxue-like)
+  // Floor number (below label, left-aligned)
   floorValue = new PIXI.Text({
     text: "0",
-    style: { fontFamily: "wenxue, Arial", fontSize: w * 0.17, fill: "#FAD961", stroke: { color: "#FFF", width: w * 0.017 } },
+    style: { fontFamily: "wenxue, Arial", fontSize: w * 0.14, fill: "#FAD961", stroke: { color: "#FFF", width: w * 0.014 } },
   });
-  floorValue.anchor.set(1, 1);
-  floorValue.x = w * 0.22;
-  floorValue.y = w * 0.2;
+  floorValue.anchor.set(0, 0);
+  floorValue.x = w * 0.02;
+  floorValue.y = w * 0.06;
 
   // Score icon (Sprite)
   scoreImg = new PIXI.Sprite(engine.getTexture("score"));
@@ -42,14 +43,14 @@ function initHud(engine) {
   scoreImg.x      = w * 0.61;
   scoreImg.y      = w * 0.038;
 
-  // Score number
+  // Score number (vertically centered within the badge)
   scoreValue = new PIXI.Text({
     text: "0",
-    style: { fontFamily: "wenxue, Arial", fontSize: w * 0.06, fill: "#FAD961", stroke: { color: "#FFF", width: w * 0.006 } },
+    style: { fontFamily: "wenxue, Arial", fontSize: w * 0.07, fill: "#FAD961", stroke: { color: "#FFF", width: w * 0.007 } },
   });
-  scoreValue.anchor.set(1, 1);
-  scoreValue.x = w * 0.9;
-  scoreValue.y = w * 0.11;
+  scoreValue.anchor.set(1, 0.5);
+  scoreValue.x = w * 0.93;
+  scoreValue.y = scoreImg.y + scoreImg.height / 2;
 
   // Heart sprites (3)
   heartSprites = [];
@@ -79,11 +80,6 @@ export const endAnimate = (engine) => {
   const successCount = engine.getVariable(constant.successCount, 0);
   const failedCount  = engine.getVariable(constant.failedCount,  0);
   const gameScore    = engine.getVariable(constant.gameScore,    0);
-
-  // 3-figure adjustment for floor label x position
-  const offset = Number(successCount) > 99 ? engine.width * 0.1 : 0;
-  floorLabel.x = engine.width * 0.04 + offset;
-  floorValue.x = engine.width * 0.22 + offset;
 
   floorValue.text  = String(successCount);
   scoreValue.text  = String(gameScore);
