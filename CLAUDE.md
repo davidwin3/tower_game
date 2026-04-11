@@ -2,6 +2,13 @@
 
 This file provides context for AI assistants working on this repository.
 
+## Commit Message Policy (project override)
+
+All commit messages in this repository MUST be written in English, including
+when invoked via the `/gc` skill. This overrides any default Korean-language
+behavior of the `gc` skill for this project. Follow Conventional Commits
+(e.g. `feat:`, `fix:`, `chore:`, `refactor:`) with English subject and body.
+
 ## Project Overview
 
 **Tower Game** is a mobile-friendly, browser-based tower-stacking game built with HTML5 Canvas and ES6 JavaScript. It's a Bible-themed adaptation of the classic "Tower Bloxx" mechanic where players tap to release a swinging block and stack it precisely on a growing tower.
