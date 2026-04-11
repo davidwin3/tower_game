@@ -1,4 +1,4 @@
-import * as PIXI from "pixi.js";
+import { Container, Sprite, Text } from "pixi.js";
 import {
   getMoveDownValue,
   getLandBlockVelocity,
@@ -38,8 +38,8 @@ const checkCollision = (inst, line) => {
  */
 export function createBlock(engine, blockNumber) {
   // Sprites
-  const blockSprite = new PIXI.Sprite();
-  const ropeSprite  = new PIXI.Sprite();
+  const blockSprite = new Sprite();
+  const ropeSprite  = new Sprite();
 
   // Bible text label (outline + fill achieved via separate Text objects)
   const labelStyle = {
@@ -50,10 +50,10 @@ export function createBlock(engine, blockNumber) {
     stroke: { color: "#000000", width: 3 },
     align: "center",
   };
-  const label = new PIXI.Text({ text: "", style: labelStyle });
+  const label = new Text({ text: "", style: labelStyle });
   label.anchor.set(0.5, 0.5);
 
-  const container = new PIXI.Container();
+  const container = new Container();
   container.addChild(ropeSprite, blockSprite, label);
 
   // ── Internal state ─────────────────────────────────────────────────────────
@@ -117,10 +117,6 @@ export function createBlock(engine, blockNumber) {
         const bookIndex      = gameMode === "old" ? relIndex : 40 + (relIndex - 1);
         inst.bibleBookIndex  = bookIndex;
         inst.bibleBookName   = getBibleBookName(gameMode, bookIndex);
-
-        console.log(
-          `블럭 생성: block_${blockNumber}, bookIndex=${bookIndex}, name=${inst.bibleBookName}`
-        );
       }
 
       if (!inst.visible) return;
@@ -189,10 +185,6 @@ export function createBlock(engine, blockNumber) {
             const finalBookIndex = gameMode === "old" ? relIndex : 40 + (relIndex - 1);
             inst.bibleBookIndex  = finalBookIndex;
             inst.bibleBookName   = getBibleBookName(gameMode, finalBookIndex);
-
-            console.log(
-              `블럭 착지: ${inst.name}, successCount=${currentSuccess}, bookIndex=${finalBookIndex}`
-            );
 
             engine.setTimeMovement(constant.moveDownMovement, 500);
             const lastSuccess = currentSuccess - 1;
