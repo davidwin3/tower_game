@@ -1,4 +1,4 @@
-import * as PIXI from "pixi.js";
+import { Text } from "pixi.js";
 import * as constant from "./constant";
 
 export const checkMoveDown = (engine) =>
@@ -133,7 +133,7 @@ export const addScore = (engine, isPerfect) => {
  * Callers should addChild() it themselves, or use updateText() to update existing nodes.
  */
 export const makeYellowText = (string, size, { fontName = "Arial", fontWeight = "bold" } = {}) => {
-  const text = new PIXI.Text({
+  const text = new Text({
     text: String(string),
     style: {
       fontFamily: fontName === "wenxue" ? "wenxue, Arial" : fontName,

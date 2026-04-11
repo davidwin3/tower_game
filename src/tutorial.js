@@ -1,4 +1,4 @@
-import * as PIXI from "pixi.js";
+import { Container, Sprite } from "pixi.js";
 import { getHookStatus } from "./utils";
 import * as constant from "./constant";
 
@@ -8,8 +8,8 @@ import * as constant from "./constant";
  * @param {string} imageName  "tutorial" or "tutorial-arrow"
  */
 export function createTutorial(engine, imageName) {
-  const sprite    = new PIXI.Sprite();
-  const container = new PIXI.Container();
+  const sprite    = new Sprite();
+  const container = new Container();
   container.addChild(sprite);
 
   let ready = false;

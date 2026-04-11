@@ -1,4 +1,4 @@
-import * as PIXI from "pixi.js";
+import { Container, Sprite } from "pixi.js";
 import { checkMoveDown, getMoveDownValue } from "./utils";
 import * as constant from "./constant";
 
@@ -16,8 +16,8 @@ const randomCloudImgName = (count) => {
  * @returns Instance object compatible with engine.addInstance()
  */
 export function createCloud(engine, index) {
-  const sprite = new PIXI.Sprite();
-  const container = new PIXI.Container();
+  const sprite = new Sprite();
+  const container = new Container();
   container.addChild(sprite);
 
   let count = 5 - index;

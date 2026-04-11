@@ -1,4 +1,4 @@
-import * as PIXI from "pixi.js";
+import { Container, FillGradient, Graphics, Sprite, Texture } from "pixi.js";
 import { checkMoveDown, getMoveDownValue } from "./utils";
 import * as constant from "./constant";
 
@@ -8,14 +8,14 @@ import * as constant from "./constant";
  */
 export function createBackground(engine) {
   // Gradient rect (redrawn each frame with PIXI.Graphics)
-  const gradGraphics = new PIXI.Graphics();
+  const gradGraphics = new Graphics();
   // Background image sprite
-  const bgSprite = new PIXI.Sprite();
+  const bgSprite = new Sprite();
   // Lightning flash overlay
-  const flashRect = new PIXI.Graphics();
+  const flashRect = new Graphics();
   flashRect.rect(0, 0, engine.width, engine.height).fill({ color: 0xffffff, alpha: 0 });
 
-  const container = new PIXI.Container();
+  const container = new Container();
   container.addChild(gradGraphics, bgSprite, flashRect);
 
   const colorArr = [
@@ -61,7 +61,7 @@ export function createBackground(engine) {
       const colorTop    = getColorRgb(colorIndex + 1, proportion);
       const colorBase   = getColorRgb(colorIndex,     proportion);
 
-      const gradient = new PIXI.FillGradient(0, 0, 0, h);
+      const gradient = new FillGradient(0, 0, 0, h);
       gradient.addColorStop(0, colorTop);
       gradient.addColorStop(1, colorBase);
 
@@ -82,7 +82,7 @@ export function createBackground(engine) {
 
       // ── Background image (parallax) ───────────────────────────────
       const bgTexture = engine.getTexture("background");
-      if (bgTexture && bgTexture !== PIXI.Texture.EMPTY) {
+      if (bgTexture && bgTexture !== Texture.EMPTY) {
         if (bgSprite.texture !== bgTexture) {
           bgSprite.texture = bgTexture;
           bgSprite.width   = w;

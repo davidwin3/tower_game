@@ -1,4 +1,4 @@
-import * as PIXI from "pixi.js";
+import { Sprite, Text } from "pixi.js";
 import { createBlock } from "./block";
 import { checkMoveDown, getMoveDownValue, getAngleBase } from "./utils";
 import { addFlight } from "./flight";
@@ -16,7 +16,7 @@ function initHud(engine) {
   const hud = engine.layers.hud;
 
   // "fl" label (small, above the number)
-  floorLabel = new PIXI.Text({
+  floorLabel = new Text({
     text: "fl",
     style: { fontFamily: "Arial", fontWeight: "bold", fontSize: w * 0.055, fill: "#FAD961", stroke: { color: "#FFF", width: w * 0.005 } },
   });
@@ -25,7 +25,7 @@ function initHud(engine) {
   floorLabel.y = w * 0.01;
 
   // Floor number (below label, left-aligned)
-  floorValue = new PIXI.Text({
+  floorValue = new Text({
     text: "0",
     style: { fontFamily: "wenxue, Arial", fontSize: w * 0.14, fill: "#FAD961", stroke: { color: "#FFF", width: w * 0.014 } },
   });
@@ -34,7 +34,7 @@ function initHud(engine) {
   floorValue.y = w * 0.06;
 
   // Score icon (Sprite)
-  scoreImg = new PIXI.Sprite(engine.getTexture("score"));
+  scoreImg = new Sprite(engine.getTexture("score"));
   const scoreNatW = scoreImg.texture.width  || 1;
   const scoreNatH = scoreImg.texture.height || 1;
   const scoreW    = w * 0.35;
@@ -44,7 +44,7 @@ function initHud(engine) {
   scoreImg.y      = w * 0.038;
 
   // Score number (vertically centered within the badge)
-  scoreValue = new PIXI.Text({
+  scoreValue = new Text({
     text: "0",
     style: { fontFamily: "wenxue, Arial", fontSize: w * 0.07, fill: "#FAD961", stroke: { color: "#FFF", width: w * 0.007 } },
   });
@@ -60,7 +60,7 @@ function initHud(engine) {
   const heartW     = w * 0.08;
   const heartH     = (heartNatH * heartW) / heartNatW;
   for (let i = 0; i < 3; i++) {
-    const s = new PIXI.Sprite(heartTex);
+    const s = new Sprite(heartTex);
     s.width  = heartW;
     s.height = heartH;
     s.x      = w * 0.66 + i * heartW;

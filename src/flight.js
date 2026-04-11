@@ -1,4 +1,4 @@
-import * as PIXI from "pixi.js";
+import { Container, Sprite } from "pixi.js";
 import * as constant from "./constant";
 
 /**
@@ -6,8 +6,8 @@ import * as constant from "./constant";
  * Used by addFlight() which is called from animateFuncs.js
  */
 function createFlight(engine, number, type) {
-  const sprite    = new PIXI.Sprite(engine.getTexture(`f${number}`));
-  const container = new PIXI.Container();
+  const sprite    = new Sprite(engine.getTexture(`f${number}`));
+  const container = new Container();
   container.addChild(sprite);
 
   const size = engine.getVariable(constant.cloudSize);

@@ -1,4 +1,4 @@
-import * as PIXI from "pixi.js";
+import { Container, Sprite } from "pixi.js";
 import { getSwingBlockVelocity } from "./utils";
 import * as constant from "./constant";
 
@@ -6,8 +6,8 @@ import * as constant from "./constant";
  * createHook — PixiJS hook/rope instance factory.
  */
 export function createHook(engine) {
-  const sprite = new PIXI.Sprite();
-  const container = new PIXI.Container();
+  const sprite = new Sprite();
+  const container = new Container();
   container.addChild(sprite);
 
   let ready = false;

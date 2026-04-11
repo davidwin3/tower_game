@@ -1,4 +1,4 @@
-import * as PIXI from "pixi.js";
+import { Container, Graphics } from "pixi.js";
 import { getMoveDownValue, getLandBlockVelocity } from "./utils";
 import * as constant from "./constant";
 
@@ -7,8 +7,8 @@ import * as constant from "./constant";
  * In debug mode renders as a red line; otherwise invisible.
  */
 export function createLine(engine) {
-  const graphics  = new PIXI.Graphics();
-  const container = new PIXI.Container();
+  const graphics  = new Graphics();
+  const container = new Container();
   container.addChild(graphics);
 
   let ready = false;
