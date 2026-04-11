@@ -101,25 +101,17 @@ window.TowerGame = async (opt = {}) => {
   eng.playBgm  = () => eng.playAudio("bgm", true);
   eng.pauseBgm = () => eng.pauseAudio("bgm");
 
+  // Pre-game instances — rendered behind the landing overlay so the canvas
+  // already shows an animated background + clouds before the user taps START.
+  // Matches the old cooljs behavior (paintUnderInstance + immediate addInstance).
+  eng._addPreGameInstances = () => {
+    eng.addInstance(createBackground(eng));
+    for (let i = 1; i <= 4; i++) eng.addInstance(createCloud(eng, i));
+    eng.addInstance(createLine(eng));
+    eng.addInstance(createHook(eng));
+  };
+
   eng.start = () => {
-    // Clouds
-    for (let i = 1; i <= 4; i++) {
-      const cloud = createCloud(eng, i);
-      eng.addInstance(cloud);
-    }
-
-    // Background
-    const bg = createBackground(eng);
-    eng.addInstance(bg);
-
-    // Line
-    const line = createLine(eng);
-    eng.addInstance(line);
-
-    // Hook
-    const hook = createHook(eng);
-    eng.addInstance(hook);
-
     // Tutorial
     const tut      = createTutorial(eng, "tutorial");
     const tutArrow = createTutorial(eng, "tutorial-arrow");
@@ -165,6 +157,7 @@ function updateLoading(status) {
 
 function onLoadComplete() {
   $("#canvas").show();
+  if (engine && engine._addPreGameInstances) engine._addPreGameInstances();
   setTimeout(() => {
     $(".loading").hide();
     if (isRestarting) {
