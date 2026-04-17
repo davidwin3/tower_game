@@ -177,14 +177,10 @@ function onLoadComplete() {
   if (engine && engine._addPreGameInstances) engine._addPreGameInstances();
   setTimeout(() => {
     $(".loading").hide();
-    if (isRestarting) {
-      isRestarting = false;
-      gameStart = true;
-      engine.playBgm();
-      setTimeout(engine.start, 400);
-    } else {
-      $(".landing").show();
-    }
+    isRestarting = false;
+    gameStart = true;
+    engine.playBgm();
+    setTimeout(engine.start, 400);
     if (window.BibleDailySDK) window.BibleDailySDK.onGameStart();
   }, 1000);
 }
@@ -220,11 +216,16 @@ async function gameReady() {
 }
 
 // ── Event handlers ─────────────────────────────────────────────────────────────
-$(".mode-button").on("click", function () {
+$(".landing .mode-btn").on("click", function () {
   selectedGameMode = $(this).data("mode");
   option.gameMode  = selectedGameMode;
   option.maxBooks  = selectedGameMode === "old" ? 39 : 27;
   loadError = false;
+
+  // Animate landing screen off
+  $(".landing .action-1").addClass("slideTop");
+  $(".landing .action-2").addClass("slideBottom");
+  setTimeout(() => { $(".landing").hide(); }, 950);
 
   const isWechat = navigator.userAgent.toLowerCase().indexOf("micromessenger") !== -1;
   if (isWechat) {
@@ -232,20 +233,6 @@ $(".mode-button").on("click", function () {
   } else {
     gameReady();
   }
-
-  // Slide mode selection off screen
-  $(".mode-selection").addClass("slideTop");
-  setTimeout(() => { $(".mode-selection").hide(); }, 950);
-});
-
-$("#start").on("click", function () {
-  if (gameStart || !selectedGameMode) return;
-  gameStart = true;
-  $(".landing .action-1").addClass("slideTop");
-  $(".landing .action-2").addClass("slideBottom");
-  setTimeout(() => { $(".landing").hide(); }, 950);
-  engine.playBgm();
-  setTimeout(engine.start, 400);
 });
 
 $(".js-reload").on("click", function () {
@@ -302,15 +289,16 @@ $(".js-mode-select").on("click", function () {
   option.gameMode  = null;
   option.maxBooks  = null;
 
-  $(".landing").hide();
-  $(".mode-selection").removeClass("slideTop").show();
+  // Return to landing screen
+  $(".landing .action-1").removeClass("slideTop");
+  $(".landing .action-2").removeClass("slideBottom");
+  $(".landing").show();
 });
 
 window.addEventListener("load", () => {
   domReady = true;
-  // Show mode selection screen immediately (no pre-game load needed)
   setTimeout(() => {
     $(".loading").hide();
-    $(".mode-selection").show();
+    $(".landing").show();
   }, 500);
 });

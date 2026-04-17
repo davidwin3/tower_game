@@ -24,36 +24,15 @@
           </div>
         </div>
       </div>
-      <!-- 모드 선택 화면 -->
-      <div class="mode-selection hide">
-        <div class="mode-content">
-          <div class="mode-title">
-            <h1 class="font-wenxue">성경 타워 게임</h1>
-            <p class="mode-subtitle">모드를 선택하세요</p>
-          </div>
-          <div class="mode-buttons">
-            <div class="mode-button" id="old-testament-btn" data-mode="old">
-              <div class="mode-icon">📜</div>
-              <h3>구약 성경</h3>
-              <p>39권의 구약 성경으로<br />타워를 쌓아보세요</p>
-              <div class="mode-books-count">39권</div>
-            </div>
-            <div class="mode-button" id="new-testament-btn" data-mode="new">
-              <div class="mode-icon">✝️</div>
-              <h3>신약 성경</h3>
-              <p>27권의 신약 성경으로<br />타워를 쌓아보세요</p>
-              <div class="mode-books-count">27권</div>
-            </div>
-          </div>
-        </div>
-      </div>
-
       <div class="landing hide">
         <div class="action-1">
           <img src="./assets/main-bible-title.png" class="title swing" />
         </div>
         <div class="action-2">
-          <img id="start" src="./assets/main-index-start.png" class="start" />
+          <div class="mode-btn-row">
+            <img src="./assets/old-tsmt-btn.png" class="mode-btn" data-mode="old" />
+            <img src="./assets/new-tsmt-btn.png" class="mode-btn" data-mode="new" />
+          </div>
         </div>
       </div>
       <div id="modal" class="modal hide">

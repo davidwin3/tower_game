@@ -136,6 +136,18 @@ ul {
   margin: 0 auto;
   position: relative;
 }
+.landing {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgb(105, 230, 240) url(/assets/background.png) center bottom /
+    100% auto no-repeat;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 .landing .title {
   width: 60%;
 }
@@ -146,12 +158,19 @@ ul {
   top: 0.2rem;
 }
 .landing .action-2 {
-  position: absolute;
-  bottom: 0.2rem;
   width: 100%;
+  margin-top: 0.2rem;
 }
-.landing .start {
-  width: 65%;
+.landing .mode-btn-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 0.1rem;
+  padding: 0 0.15rem;
+}
+.landing .mode-btn {
+  width: 45%;
+  cursor: pointer;
 }
 .slideTop {
   -webkit-animation: st 1s ease-in-out;
@@ -261,7 +280,10 @@ ul {
   margin-top: -0.2rem;
   font-size: 0.5rem;
   color: #ff735c;
-  text-shadow: -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff,
+  text-shadow:
+    -2px -2px 0 #fff,
+    2px -2px 0 #fff,
+    -2px 2px 0 #fff,
     2px 2px 0 #fff;
 }
 .modal .tip {
@@ -290,8 +312,9 @@ ul {
 @font-face {
   font-family: wenxue;
   src: url(/assets/wenxue.eot);
-  src: url(/assets/wenxue.eot), url(/assets/wenxue.woff),
-    url(/assets/wenxue.ttf), url(/assets/wenxue.svg);
+  src:
+    url(/assets/wenxue.eot), url(/assets/wenxue.woff), url(/assets/wenxue.ttf),
+    url(/assets/wenxue.svg);
 }
 .font-wenxue {
   font-family: wenxue;
