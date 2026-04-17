@@ -236,6 +236,11 @@ ul {
     transform-origin: top center;
   }
 }
+.modal {
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+}
 .modal .mask {
   background-color: #000;
   opacity: 0.6;
@@ -244,16 +249,22 @@ ul {
   width: 100%;
   top: 0;
   left: 0;
+  z-index: 0;
 }
 .modal .modal-content {
   position: fixed;
-  height: 100%;
-  width: 90%;
-  margin-top: 0.3rem;
-  top: 0;
+  inset: 0;
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.12rem 0;
+  box-sizing: border-box;
+  z-index: 1;
 }
 .modal .main {
-  width: 85%;
+  width: 92%;
+  max-width: 4.1rem;
   margin: 0 auto;
 }
 .modal .container {
@@ -261,23 +272,24 @@ ul {
 }
 .modal .bg {
   width: 100%;
-  position: absolute;
-  top: 0;
-  left: 0;
+  display: block;
 }
 .modal .modal-main {
   width: 100%;
   position: absolute;
   top: 0;
   left: 0;
-  margin-top: -0.4rem;
+  right: 0;
+}
+.modal .js-modal-card {
+  width: 100%;
 }
 .modal .over-img {
   width: 80%;
-  margin: 0.8rem auto 0;
+  margin: 0.34rem auto 0;
 }
 .modal .over-score {
-  margin-top: -0.2rem;
+  margin-top: -0.06rem;
   font-size: 0.5rem;
   color: #ff735c;
   text-shadow:
@@ -290,9 +302,64 @@ ul {
   font-size: 0.16rem;
   color: #9b724e;
 }
+.modal .tip p {
+  width: 84%;
+  margin: 0.04rem auto 0;
+  line-height: 1.25;
+}
 .modal .over-button-b {
   width: 70%;
-  margin: 0.1rem auto 0;
+  margin: 0.08rem auto 0;
+  display: block;
+}
+
+@media screen and (max-height: 760px) {
+  .modal .main {
+    width: 90%;
+    max-width: 3.8rem;
+  }
+  .modal .over-img {
+    width: 78%;
+    margin-top: 0.28rem;
+  }
+  .modal .over-score {
+    font-size: 0.46rem;
+  }
+  .modal .tip {
+    font-size: 0.14rem;
+  }
+  .modal .over-button-b {
+    width: 66%;
+    margin-top: 0.06rem;
+  }
+}
+
+@media screen and (max-height: 680px) {
+  .modal .modal-content {
+    padding: 0.08rem 0;
+  }
+  .modal .main {
+    width: 88%;
+    max-width: 3.55rem;
+  }
+  .modal .over-img {
+    width: 74%;
+    margin-top: 0.24rem;
+  }
+  .modal .over-score {
+    margin-top: -0.04rem;
+    font-size: 0.4rem;
+  }
+  .modal .tip {
+    font-size: 0.13rem;
+  }
+  .modal .tip p {
+    width: 82%;
+  }
+  .modal .over-button-b {
+    width: 64%;
+    margin-top: 0.05rem;
+  }
 }
 .wxShare {
   background: #000;

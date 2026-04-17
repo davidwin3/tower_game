@@ -17,7 +17,6 @@ if (gameHeight / gameWidth < ratio) {
   gameWidth = Math.ceil(gameHeight / ratio);
 }
 $(".content").css({ height: gameHeight + "px", width: gameWidth + "px" });
-$(".js-modal-content").css({ width: gameWidth + "px" });
 
 // ── App state ──────────────────────────────────────────────────────────────────
 var domReady       = false;
@@ -189,19 +188,7 @@ function overShowOver() {
   $("#modal").show();
   $("#over-modal").show();
   $("#over-zero").show();
-
-  if (selectedGameMode) {
-    const modeText   = selectedGameMode === "old" ? "구약 성경" : "신약 성경";
-    const maxB       = selectedGameMode === "old" ? 39 : 27;
-    const completed  = Math.min(successCount, maxB);
-    let message      = `${modeText} 모드에서 ${completed}권을 쌓았습니다!`;
-    if (completed === maxB) {
-      message = `🎉 축하합니다! ${modeText} ${maxB}권을 모두 완성했습니다! 🎉`;
-    } else if (completed >= maxB * 0.8) {
-      message = `👏 훌륭합니다! ${modeText} ${completed}권을 쌓았습니다!`;
-    }
-    $(".tip p").text(message);
-  }
+  $(".tip p").text("");
 }
 
 async function gameReady() {
