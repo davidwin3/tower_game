@@ -31,6 +31,7 @@ export async function createEngine({ canvasId, width, height, soundOn = true }) 
     line:    new Container(),
     hud:     new Container(),
     overlay: new Container(),   // tutorial / effects
+    ui:      new Container(),   // full-screen scenes: loading, modals, share
   };
   Object.values(layers).forEach(l => app.stage.addChild(l));
 

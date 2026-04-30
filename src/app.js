@@ -6,6 +6,7 @@ import { createLine } from "./line";
 import { createCloud } from "./cloud";
 import { createHook } from "./hook";
 import { createTutorial } from "./tutorial";
+import { createLoadingScene } from "./scenes/loading";
 import * as constant from "./constant";
 import { startAnimate, endAnimate, resetHud } from "./animateFuncs";
 
@@ -27,6 +28,7 @@ var selectedGameMode = null;
 var score          = 0;
 var successCount   = 0;
 var engine         = null;   // current engine instance
+var loadingScene   = null;   // current PIXI loading scene
 
 // ── Game options ───────────────────────────────────────────────────────────────
 const option = {
@@ -160,22 +162,22 @@ function replaceCanvasElement() {
 }
 
 function updateLoading(status) {
-  const { success, total, failed } = status;
+  const { failed } = status;
   if (failed > 0 && !loadError) {
     loadError = true;
     alert("Network error... Please try again.");
     return;
   }
-  let percent = Math.min(parseInt((success / total) * 100), 98);
-  $(".loading .title").text(percent + "%");
-  $(".loading .percent").css({ width: percent + "%" });
+  if (loadingScene) loadingScene.onProgress(status);
 }
 
 function onLoadComplete() {
-  $("#canvas").show();
   if (engine && engine._addPreGameInstances) engine._addPreGameInstances();
   setTimeout(() => {
-    $(".loading").hide();
+    if (loadingScene) {
+      loadingScene.destroy();
+      loadingScene = null;
+    }
     isRestarting = false;
     gameStart = true;
     engine.playBgm();
@@ -194,11 +196,9 @@ function overShowOver() {
 async function gameReady() {
   if (!option.gameMode) return;
 
-  $(".loading .title").text("0%");
-  $(".loading .percent").css({ width: "0%" });
-  $(".loading").show();
-
   engine = await window.TowerGame(option);
+  $("#canvas").show();
+  loadingScene = createLoadingScene(engine);
   engine.load(onLoadComplete, updateLoading);
 }
 
@@ -285,7 +285,6 @@ $(".js-mode-select").on("click", function () {
 window.addEventListener("load", () => {
   domReady = true;
   setTimeout(() => {
-    $(".loading").hide();
     $(".landing").show();
   }, 500);
 });

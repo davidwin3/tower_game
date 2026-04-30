@@ -84,53 +84,6 @@ ul {
 .clear {
   clear: both;
 }
-.loading {
-  background-color: #f05a50;
-  height: 100%;
-  width: 100%;
-}
-.loading .main {
-  width: 60%;
-  margin: 0 auto;
-  color: #fff;
-}
-.loading .main img {
-  width: 60%;
-  margin: 1rem auto 0;
-}
-.loading .main .title {
-  font-size: 0.3rem;
-}
-.loading .main .text {
-  font-size: 0.15rem;
-}
-.loading .main .bar {
-  height: 0.12rem;
-  width: 100%;
-  border: 3px solid #fff;
-  border-radius: 0.6rem;
-  margin: 0.1rem 0;
-}
-.loading .main .bar .sub {
-  height: 0.1rem;
-  width: 98%;
-  margin: 0.008rem auto 0;
-}
-.loading .main .bar .percent {
-  height: 100%;
-  width: 0;
-  background-color: #fff;
-  border-radius: 0.6rem;
-}
-.loading .logo {
-  position: absolute;
-  bottom: 0.3rem;
-  left: 0;
-  right: 0;
-}
-.loading .logo img {
-  width: 1rem;
-}
 .content {
   height: 100vh;
   margin: 0 auto;
