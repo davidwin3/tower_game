@@ -22,13 +22,9 @@ if (gameHeight / gameWidth < ratio) {
 $(".content").css({ height: gameHeight + "px", width: gameWidth + "px" });
 
 // ── App state ──────────────────────────────────────────────────────────────────
-var domReady       = false;
 var loadError      = false;
-var gameStart      = false;
-var isRestarting   = false;
 var selectedGameMode = null;
 var score          = 0;
-var successCount   = 0;
 var engine         = null;   // current engine instance
 var loadingScene   = null;   // current PIXI loading scene
 var gameOverScene  = null;   // current PIXI game-over modal
@@ -40,9 +36,8 @@ const option = {
   height:   gameHeight,
   canvasId: "canvas",
   soundOn:  true,
-  setGameScore:   (s) => { score = s; },
-  setGameSuccess: (s) => { successCount = s; },
-  setGameFailed:  (f) => {
+  setGameScore: (s) => { score = s; },
+  setGameFailed: (f) => {
     if (f >= 3 && gameOverScene) gameOverScene.show(score);
   },
 };
@@ -153,9 +148,9 @@ window.TowerGame = async (opt = {}) => {
     eng.setTimeMovement(constant.tutorialMovement, 500);
     eng.setVariable(constant.gameStartNow, true);
 
-    // Touch / click handler
-    // document 레벨로 등록: .content div가 position:relative로 캔버스 위에 쌓여
-    // canvas의 pointerdown을 차단하기 때문에 document에서 감지해야 함
+    // Touch / click handler. Bound at document level so it survives canvas
+    // replacement on mode change (handleModeSelect calls replaceCanvasElement
+    // which would orphan a canvas-level listener).
     const onInput = () => touchEventHandler(eng);
     document.addEventListener("pointerdown", onInput);
     document.addEventListener("touchstart", onInput, { passive: true });
@@ -203,8 +198,6 @@ function onLoadComplete() {
       loadingScene.destroy();
       loadingScene = null;
     }
-    isRestarting = false;
-    gameStart = true;
     engine.playBgm();
     setTimeout(engine.start, 400);
     if (window.BibleDailySDK) window.BibleDailySDK.onGameStart();
@@ -245,13 +238,10 @@ function handleReload() {
     window.location.href = window.location.href.split("?")[0] + "?s=" + +new Date();
     return;
   }
-  gameStart    = false;
-  score        = 0;
-  successCount = 0;
+  score = 0;
 
   if (!engine) {
-    isRestarting = true;
-    loadError    = false;
+    loadError = false;
     gameReady();
     return;
   }
@@ -273,7 +263,6 @@ function handleReload() {
     engine._initState();
     engine._addPreGameInstances();
     buildOverlays();
-    gameStart = true;
     engine.playBgm();
     setTimeout(engine.start, 400);
   }, 0);
@@ -284,9 +273,7 @@ function handleInvite() {
 }
 
 function handleModeSelect() {
-  gameStart    = false;
-  score        = 0;
-  successCount = 0;
+  score = 0;
 
   // Defer the destroy so PIXI's pointer event processing finishes before
   // we tear down the canvas + EventSystem. See handleReload for context.
@@ -312,8 +299,5 @@ function handleModeSelect() {
 }
 
 window.addEventListener("load", () => {
-  domReady = true;
-  setTimeout(() => {
-    $(".landing").show();
-  }, 500);
+  $(".landing").show();
 });
