@@ -88,6 +88,9 @@ ul {
   height: 100vh;
   margin: 0 auto;
   position: relative;
+  /* Let pointer events fall through to the PIXI canvas underneath. Children
+     that need clicks (.landing, .wxShare) re-enable with pointer-events:auto. */
+  pointer-events: none;
 }
 .landing {
   position: absolute;
@@ -100,6 +103,7 @@ ul {
   display: flex;
   flex-direction: column;
   align-items: center;
+  pointer-events: auto;
 }
 .landing .title {
   width: 60%;
@@ -198,6 +202,7 @@ ul {
   height: 100%;
   z-index: 11;
   opacity: 0.9;
+  pointer-events: auto;
 }
 .wxShare img {
   width: 50%;
