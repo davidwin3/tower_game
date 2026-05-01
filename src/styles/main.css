@@ -89,7 +89,7 @@ ul {
   margin: 0 auto;
   position: relative;
   /* Let pointer events fall through to the PIXI canvas underneath. Children
-     that need clicks (.landing, .wxShare) re-enable with pointer-events:auto. */
+     that need clicks (.landing) re-enable with pointer-events:auto. */
   pointer-events: none;
 }
 .landing {
@@ -192,22 +192,6 @@ ul {
     transform: rotate(-5deg);
     transform-origin: top center;
   }
-}
-.wxShare {
-  background: #000;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  z-index: 11;
-  opacity: 0.9;
-  pointer-events: auto;
-}
-.wxShare img {
-  width: 50%;
-  float: right;
-  margin: 10px 10px 0 0;
 }
 @font-face {
   font-family: wenxue;

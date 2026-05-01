@@ -8,6 +8,7 @@ import { createHook } from "./hook";
 import { createTutorial } from "./tutorial";
 import { createLoadingScene } from "./scenes/loading";
 import { createGameOverScene } from "./scenes/game-over";
+import { createShareOverlay } from "./scenes/share-overlay";
 import * as constant from "./constant";
 import { startAnimate, endAnimate, resetHud } from "./animateFuncs";
 
@@ -31,6 +32,7 @@ var successCount   = 0;
 var engine         = null;   // current engine instance
 var loadingScene   = null;   // current PIXI loading scene
 var gameOverScene  = null;   // current PIXI game-over modal
+var shareOverlay   = null;   // current PIXI share overlay
 
 // ── Game options ───────────────────────────────────────────────────────────────
 const option = {
@@ -45,10 +47,11 @@ const option = {
   },
 };
 
-// Build the game-over modal once textures are loaded. Called after the
-// initial load and after every engine.reset() (which destroys the previous
-// modal along with the rest of the ui layer).
-function buildGameOverScene() {
+// Build the game-over modal and share overlay once textures are loaded.
+// Called after the initial load and after every engine.reset() (which
+// destroys the previous overlays along with the rest of the ui layer).
+// The share overlay is added after the modal so it stacks on top.
+function buildOverlays() {
   if (!engine) return;
   gameOverScene = createGameOverScene(engine, {
     onReload:     handleReload,
@@ -56,6 +59,7 @@ function buildGameOverScene() {
     onModeSelect: handleModeSelect,
   });
   gameOverScene.hide();
+  shareOverlay = createShareOverlay(engine);
 }
 
 // ── TowerGame factory ──────────────────────────────────────────────────────────
@@ -193,7 +197,7 @@ function updateLoading(status) {
 
 function onLoadComplete() {
   if (engine && engine._addPreGameInstances) engine._addPreGameInstances();
-  buildGameOverScene();
+  buildOverlays();
   setTimeout(() => {
     if (loadingScene) {
       loadingScene.destroy();
@@ -265,9 +269,10 @@ function handleReload() {
     engine.reset();
     resetHud();
     gameOverScene = null;
+    shareOverlay  = null;
     engine._initState();
     engine._addPreGameInstances();
-    buildGameOverScene();
+    buildOverlays();
     gameStart = true;
     engine.playBgm();
     setTimeout(engine.start, 400);
@@ -275,10 +280,8 @@ function handleReload() {
 }
 
 function handleInvite() {
-  $(".wxShare").show();
+  if (shareOverlay) shareOverlay.show();
 }
-
-$(".wxShare").on("click", function () { $(".wxShare").hide(); });
 
 function handleModeSelect() {
   gameStart    = false;
@@ -294,6 +297,7 @@ function handleModeSelect() {
       replaceCanvasElement();
       engine = null;
       gameOverScene = null;
+      shareOverlay  = null;
     }
 
     selectedGameMode = null;
