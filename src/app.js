@@ -7,6 +7,7 @@ import { createCloud } from "./cloud";
 import { createHook } from "./hook";
 import { createTutorial } from "./tutorial";
 import { createLoadingScene } from "./scenes/loading";
+import { createGameOverScene } from "./scenes/game-over";
 import * as constant from "./constant";
 import { startAnimate, endAnimate, resetHud } from "./animateFuncs";
 
@@ -29,6 +30,7 @@ var score          = 0;
 var successCount   = 0;
 var engine         = null;   // current engine instance
 var loadingScene   = null;   // current PIXI loading scene
+var gameOverScene  = null;   // current PIXI game-over modal
 
 // ── Game options ───────────────────────────────────────────────────────────────
 const option = {
@@ -39,10 +41,22 @@ const option = {
   setGameScore:   (s) => { score = s; },
   setGameSuccess: (s) => { successCount = s; },
   setGameFailed:  (f) => {
-    $("#score").text(score);
-    if (f >= 3) overShowOver();
+    if (f >= 3 && gameOverScene) gameOverScene.show(score);
   },
 };
+
+// Build the game-over modal once textures are loaded. Called after the
+// initial load and after every engine.reset() (which destroys the previous
+// modal along with the rest of the ui layer).
+function buildGameOverScene() {
+  if (!engine) return;
+  gameOverScene = createGameOverScene(engine, {
+    onReload:     handleReload,
+    onInvite:     handleInvite,
+    onModeSelect: handleModeSelect,
+  });
+  gameOverScene.hide();
+}
 
 // ── TowerGame factory ──────────────────────────────────────────────────────────
 window.TowerGame = async (opt = {}) => {
@@ -65,6 +79,12 @@ window.TowerGame = async (opt = {}) => {
   eng.addImg("tutorial-arrow", pathGen("tutorial-arrow.png"));
   eng.addImg("heart",        pathGen("heart.png"));
   eng.addImg("score",        pathGen("score.png"));
+  eng.addImg("modal-bg",     pathGen("main-modal-bg.png"));
+  eng.addImg("modal-over",   pathGen("main-modal-over.png"));
+  eng.addImg("modal-again",  pathGen("main-modal-again-b.png"));
+  eng.addImg("modal-invite", pathGen("main-modal-invite-b.png"));
+  eng.addImg("modal-mode",   pathGen("main-modal-mode-b.png"));
+  eng.addImg("share-icon",   pathGen("main-share-icon.png"));
 
   const bgPrefix = gameMode === "old" ? "old" : "new";
   for (let i = 1; i <= 8; i++) eng.addImg(`c${i}`, pathGen(`${bgPrefix}-bg-${i}.png`));
@@ -173,6 +193,7 @@ function updateLoading(status) {
 
 function onLoadComplete() {
   if (engine && engine._addPreGameInstances) engine._addPreGameInstances();
+  buildGameOverScene();
   setTimeout(() => {
     if (loadingScene) {
       loadingScene.destroy();
@@ -184,13 +205,6 @@ function onLoadComplete() {
     setTimeout(engine.start, 400);
     if (window.BibleDailySDK) window.BibleDailySDK.onGameStart();
   }, 1000);
-}
-
-function overShowOver() {
-  $("#modal").show();
-  $("#over-modal").show();
-  $("#over-zero").show();
-  $(".tip p").text("");
 }
 
 async function gameReady() {
@@ -222,7 +236,7 @@ $(".landing .mode-btn").on("click", function () {
   }
 });
 
-$(".js-reload").on("click", function () {
+function handleReload() {
   if (!selectedGameMode) {
     window.location.href = window.location.href.split("?")[0] + "?s=" + +new Date();
     return;
@@ -230,9 +244,6 @@ $(".js-reload").on("click", function () {
   gameStart    = false;
   score        = 0;
   successCount = 0;
-  $("#modal").hide();
-  $("#over-modal").hide();
-  $("#over-zero").hide();
 
   if (!engine) {
     isRestarting = true;
@@ -243,24 +254,27 @@ $(".js-reload").on("click", function () {
 
   // In-place restart — reuse the existing PIXI.Application. Destroying and
   // recreating the Pixi app on the same canvas is brittle (stale WebGL
-  // context, dangling tickers), so we clear state instead.
+  // context, dangling tickers), so we clear state instead. engine.reset()
+  // also destroys the game-over scene's container (it lives in layers.ui),
+  // so we rebuild it after re-adding pre-game instances.
   engine.reset();
   resetHud();
+  gameOverScene = null;
   engine._initState();
   engine._addPreGameInstances();
+  buildGameOverScene();
   gameStart = true;
   engine.playBgm();
   setTimeout(engine.start, 400);
-});
+}
 
-$(".js-invite").on("click", function () { $(".wxShare").show(); });
-$(".wxShare").on("click",   function () { $(".wxShare").hide(); });
+function handleInvite() {
+  $(".wxShare").show();
+}
 
-$(".js-mode-select").on("click", function () {
-  $("#modal").hide();
-  $("#over-modal").hide();
-  $("#over-zero").hide();
+$(".wxShare").on("click", function () { $(".wxShare").hide(); });
 
+function handleModeSelect() {
   gameStart    = false;
   score        = 0;
   successCount = 0;
@@ -270,6 +284,7 @@ $(".js-mode-select").on("click", function () {
     resetHud();
     replaceCanvasElement();
     engine = null;
+    gameOverScene = null;
   }
 
   selectedGameMode = null;
@@ -280,7 +295,7 @@ $(".js-mode-select").on("click", function () {
   $(".landing .action-1").removeClass("slideTop");
   $(".landing .action-2").removeClass("slideBottom");
   $(".landing").show();
-});
+}
 
 window.addEventListener("load", () => {
   domReady = true;
