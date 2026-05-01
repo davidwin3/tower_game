@@ -252,20 +252,26 @@ function handleReload() {
     return;
   }
 
-  // In-place restart — reuse the existing PIXI.Application. Destroying and
-  // recreating the Pixi app on the same canvas is brittle (stale WebGL
-  // context, dangling tickers), so we clear state instead. engine.reset()
-  // also destroys the game-over scene's container (it lives in layers.ui),
-  // so we rebuild it after re-adding pre-game instances.
-  engine.reset();
-  resetHud();
-  gameOverScene = null;
-  engine._initState();
-  engine._addPreGameInstances();
-  buildGameOverScene();
-  gameStart = true;
-  engine.playBgm();
-  setTimeout(engine.start, 400);
+  // Defer the in-place restart so the PIXI _onPointerUp handler that fired
+  // this callback finishes before we destroy the modal sprites and reset
+  // the layers. Synchronous reset triggers
+  //   "null is not an object (evaluating 'this.domElement.style')"
+  // from PIXI's setCursor when it runs after our onTap.
+  setTimeout(() => {
+    if (!engine) return;
+    // In-place restart — reuse the existing PIXI.Application. engine.reset()
+    // destroys the game-over scene's container (it lives in layers.ui), so
+    // we rebuild it after re-adding pre-game instances.
+    engine.reset();
+    resetHud();
+    gameOverScene = null;
+    engine._initState();
+    engine._addPreGameInstances();
+    buildGameOverScene();
+    gameStart = true;
+    engine.playBgm();
+    setTimeout(engine.start, 400);
+  }, 0);
 }
 
 function handleInvite() {
@@ -279,22 +285,26 @@ function handleModeSelect() {
   score        = 0;
   successCount = 0;
 
-  if (engine) {
-    engine.destroy();
-    resetHud();
-    replaceCanvasElement();
-    engine = null;
-    gameOverScene = null;
-  }
+  // Defer the destroy so PIXI's pointer event processing finishes before
+  // we tear down the canvas + EventSystem. See handleReload for context.
+  setTimeout(() => {
+    if (engine) {
+      engine.destroy();
+      resetHud();
+      replaceCanvasElement();
+      engine = null;
+      gameOverScene = null;
+    }
 
-  selectedGameMode = null;
-  option.gameMode  = null;
-  option.maxBooks  = null;
+    selectedGameMode = null;
+    option.gameMode  = null;
+    option.maxBooks  = null;
 
-  // Return to landing screen
-  $(".landing .action-1").removeClass("slideTop");
-  $(".landing .action-2").removeClass("slideBottom");
-  $(".landing").show();
+    // Return to landing screen
+    $(".landing .action-1").removeClass("slideTop");
+    $(".landing .action-2").removeClass("slideBottom");
+    $(".landing").show();
+  }, 0);
 }
 
 window.addEventListener("load", () => {
